@@ -57,6 +57,7 @@ import org.telegram.ui.Cells.LoadingCell;
 import org.telegram.ui.Cells.RadioButtonCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextBlockCell;
+import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.EditTextEmoji;
@@ -98,15 +99,19 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
     private LinearLayout linearLayout;
     private LinearLayout adminnedChannelsLayout;
     private LinearLayout linkContainer;
+    private LinearLayout contentRestrictionContainer;
     private LinearLayout publicContainer;
     private LinearLayout privateContainer;
     private LinkActionView permanentLinkView;
     private RadioButtonCell radioButtonCell1;
     private RadioButtonCell radioButtonCell2;
     private TextInfoPrivacyCell typeInfoCell;
+    private TextInfoPrivacyCell restrictionInfoCell;
     private TextView helpTextView;
     private TextView checkTextView;
     private HeaderCell headerCell;
+    private HeaderCell contentRestrictionCell;
+    private TextCheckCell restrictionSavingContentCheck;
     private int checkReqId;
     private String lastCheckName;
     private Runnable checkRunnable;
@@ -750,6 +755,21 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             adminedInfoCell.setBackgroundDrawable(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
             linearLayout.addView(adminedInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+            contentRestrictionContainer = new LinearLayout(context);
+            contentRestrictionContainer.setOrientation(LinearLayout.VERTICAL);
+            contentRestrictionContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            linearLayout.addView(contentRestrictionContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            contentRestrictionCell = new HeaderCell(context);
+            contentRestrictionContainer.addView(contentRestrictionCell);
+            contentRestrictionCell.setText("Saving content");
+            restrictionSavingContentCheck = new TextCheckCell(context);
+            restrictionSavingContentCheck.setTextAndCheck("Restrict saving content", true, false);
+            contentRestrictionContainer.addView(restrictionSavingContentCheck);
+            restrictionInfoCell = new TextInfoPrivacyCell(context);
+            restrictionInfoCell.setBackground(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
+            linearLayout.addView(restrictionInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            restrictionInfoCell.setText("Participants won't be able to forward messages from this channel or save media files.");
+
             updatePrivatePublic();
         }
 
@@ -820,6 +840,8 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             linkContainer.setPadding(0, 0, 0, isPrivate ? 0 : AndroidUtilities.dp(7));
             permanentLinkView.setLink(invite != null ? invite.link : null);
             checkTextView.setVisibility(!isPrivate && checkTextView.length() != 0 ? View.VISIBLE : View.GONE);
+            contentRestrictionContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
+            restrictionInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
         }
         radioButtonCell1.setChecked(!isPrivate, true);
         radioButtonCell2.setChecked(isPrivate, true);
@@ -1220,6 +1242,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
         themeDescriptions.add(new ThemeDescription(sectionCell, ThemeDescription.FLAG_BACKGROUNDFILTER, null, null, null, null, Theme.key_windowBackgroundGrayShadow));
         themeDescriptions.add(new ThemeDescription(headerCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(headerCell2, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
+        themeDescriptions.add(new ThemeDescription(contentRestrictionCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteHintText));
         themeDescriptions.add(new ThemeDescription(checkTextView, ThemeDescription.FLAG_TEXTCOLOR | ThemeDescription.FLAG_CHECKTAG, null, null, null, null, Theme.key_windowBackgroundWhiteRedText4));
