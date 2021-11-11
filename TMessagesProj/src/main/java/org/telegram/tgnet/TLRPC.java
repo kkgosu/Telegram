@@ -35912,6 +35912,9 @@ public class TLRPC {
                 case 0x6e941a38:
                     result = new TL_channelAdminLogEventActionChangeHistoryTTL();
                     break;
+                case 0xcb2ac766:
+                    result = new TL_channelAdminLogEventActionToggleNoForwards();
+                    break;
             }
             if (result == null && exception) {
                 throw new RuntimeException(String.format("can't parse magic %x in ChannelAdminLogEventAction", constructor));
@@ -36204,6 +36207,21 @@ public class TLRPC {
 
     public static class TL_channelAdminLogEventActionToggleSignatures extends ChannelAdminLogEventAction {
         public static int constructor = 0x26ae0971;
+
+        public boolean new_value;
+
+        public void readParams(AbstractSerializedData stream, boolean exception) {
+            new_value = stream.readBool(exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            stream.writeBool(new_value);
+        }
+    }
+
+    public static class TL_channelAdminLogEventActionToggleNoForwards extends ChannelAdminLogEventAction {
+        public static int constructor = 0xcb2ac766;
 
         public boolean new_value;
 
@@ -36884,6 +36902,7 @@ public class TLRPC {
         public boolean call_not_empty;
         public boolean fake;
         public boolean gigagroup;
+        public boolean noforwards;
         public ArrayList<TL_restrictionReason> restriction_reason = new ArrayList<>();
         public TL_channelAdminRights_layer92 admin_rights_layer92;
         public TL_channelBannedRights_layer92 banned_rights_layer92;
@@ -37075,6 +37094,7 @@ public class TLRPC {
             deactivated = (flags & 32) != 0;
             call_active = (flags & 8388608) != 0;
             call_not_empty = (flags & 16777216) != 0;
+            noforwards = (flags & 33554432) != 0;
             id = stream.readInt64(exception);
             title = stream.readString(exception);
             photo = ChatPhoto.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -37100,6 +37120,7 @@ public class TLRPC {
             flags = deactivated ? (flags | 32) : (flags &~ 32);
             flags = call_active ? (flags | 8388608) : (flags &~ 8388608);
             flags = call_not_empty ? (flags | 16777216) : (flags &~ 16777216);
+            flags = noforwards ? (flags | 33554432) : (flags &~ 33554432);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             stream.writeString(title);
@@ -37354,6 +37375,7 @@ public class TLRPC {
             call_not_empty = (flags & 16777216) != 0;
             fake = (flags & 33554432) != 0;
             gigagroup = (flags & 67108864) != 0;
+            noforwards = (flags & 134217728) != 0;
             id = stream.readInt64(exception);
             if ((flags & 8192) != 0) {
                 access_hash = stream.readInt64(exception);
@@ -37413,6 +37435,7 @@ public class TLRPC {
             flags = call_not_empty ? (flags | 16777216) : (flags &~ 16777216);
             flags = fake ? (flags | 33554432) : (flags &~ 33554432);
             flags = gigagroup ? (flags | 67108864) : (flags &~ 67108864);
+            flags = noforwards ? (flags | 134217728) : (flags &~ 134217728);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             if ((flags & 8192) != 0) {
@@ -47654,6 +47677,23 @@ public class TLRPC {
             stream.writeInt32(constructor);
             peer.serializeToStream(stream);
             stream.writeInt32(msg_id);
+        }
+    }
+
+    public static class TL_messages_toggleNoForwards extends TLObject {
+        public static int constructor = 0xb11eafa2;
+
+        public InputPeer peer;
+        public boolean enabled;
+
+        public TLObject deserializeResponse(AbstractSerializedData stream, int constructor, boolean exception) {
+            return Updates.TLdeserialize(stream, constructor, exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            peer.serializeToStream(stream);
+            stream.writeBool(enabled);
         }
     }
 

@@ -2996,6 +2996,7 @@ public class Theme {
     public static final String key_fastScrollActive = "fastScrollActive";
     public static final String key_fastScrollInactive = "fastScrollInactive";
     public static final String key_fastScrollText = "fastScrollText";
+    public static final String key_buttonDisabled = "buttonDisabled";
 
     public static final String key_inappPlayerPerformer = "inappPlayerPerformer";
     public static final String key_inappPlayerTitle = "inappPlayerTitle";
@@ -3871,6 +3872,7 @@ public class Theme {
         defaultColors.put(key_fastScrollActive, 0xff52a3db);
         defaultColors.put(key_fastScrollInactive, 0xffc9cdd1);
         defaultColors.put(key_fastScrollText, 0xffffffff);
+        defaultColors.put(key_buttonDisabled, 0xffc1c3c6);
 
         defaultColors.put(key_avatar_text, 0xffffffff);
 

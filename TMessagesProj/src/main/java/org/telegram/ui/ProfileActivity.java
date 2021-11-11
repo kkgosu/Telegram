@@ -148,6 +148,7 @@ import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CrossfadeDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.FragmentContextView;
+import org.telegram.ui.Components.HintView;
 import org.telegram.ui.Components.IdenticonDrawable;
 import org.telegram.ui.Components.ImageUpdater;
 import org.telegram.ui.Components.LayoutHelper;
@@ -1470,6 +1471,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (pinchToZoomHelper != null) {
             pinchToZoomHelper.clear();
         }
+        AndroidUtilities.setFlagSecure(this, false);
     }
 
     @Override
@@ -4868,6 +4870,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (nameTextView[1] != null) {
             setParentActivityTitle(nameTextView[1].getText());
         }
+        AndroidUtilities.setFlagSecure(this, getMessagesController().getChat(chatId).noforwards);
     }
 
     @Override

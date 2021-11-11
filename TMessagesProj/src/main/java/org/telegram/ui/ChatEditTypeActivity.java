@@ -84,7 +84,7 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
     private TextSettingsCell textCell2;
     private HeaderCell contentRestrictionCell;
     private TextInfoPrivacyCell restrictionInfoCell;
-    private TextCheckCell restrictionSavingContentCheck;
+    private TextCheckCell noForwardsCheckCell;
 
     private boolean isPrivate;
 
@@ -105,6 +105,7 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
     private boolean lastNameAvailable;
     private boolean loadingInvite;
     private TLRPC.TL_chatInviteExported invite;
+    private boolean noForwards;
 
     private boolean ignoreTextChanges;
 
@@ -138,6 +139,7 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
         }
         isPrivate = !isForcePublic && TextUtils.isEmpty(currentChat.username);
         isChannel = ChatObject.isChannel(currentChat) && !currentChat.megagroup;
+        noForwards = currentChat.noforwards;
         if (isForcePublic && TextUtils.isEmpty(currentChat.username) || isPrivate && currentChat.creator) {
             TLRPC.TL_channels_checkUsername req = new TLRPC.TL_channels_checkUsername();
             req.username = "1";
@@ -199,7 +201,9 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
-                    finishFragment();
+                    if (checkDiscard()) {
+                        finishFragment();
+                    }
                 } else if (id == done_button) {
                     processDone();
                 }
@@ -397,9 +401,13 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
         contentRestrictionCell = new HeaderCell(context);
         contentRestrictionContainer.addView(contentRestrictionCell);
         contentRestrictionCell.setText("Saving content");
-        restrictionSavingContentCheck = new TextCheckCell(context);
-        restrictionSavingContentCheck.setTextAndCheck("Restrict saving content", true, false);
-        contentRestrictionContainer.addView(restrictionSavingContentCheck);
+        noForwardsCheckCell = new TextCheckCell(context);
+        noForwardsCheckCell.setTextAndCheck("Restrict saving content", noForwards, false);
+        contentRestrictionContainer.addView(noForwardsCheckCell);
+        noForwardsCheckCell.setOnClickListener(v -> {
+            noForwards = !noForwards;
+            ((TextCheckCell) v).setChecked(noForwards);
+        });
         restrictionInfoCell = new TextInfoPrivacyCell(context);
         restrictionInfoCell.setBackground(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
         linearLayout.addView(restrictionInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -455,6 +463,9 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
     private void processDone() {
         if (trySetUsername()) {
             finishFragment();
+        }
+        if (currentChat.noforwards != noForwards) {
+            getMessagesController().toggleChannelNoForwards(chatId, noForwards);
         }
     }
 
@@ -711,6 +722,23 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
             }), ConnectionsManager.RequestFlagFailOnServerErrors);
         };
         AndroidUtilities.runOnUIThread(checkRunnable, 300);
+        return true;
+    }
+
+    private boolean checkDiscard() {
+        if (noForwards != currentChat.noforwards) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+            builder.setTitle(LocaleController.getString("UserRestrictionsApplyChanges", R.string.UserRestrictionsApplyChanges));
+            if (isChannel) {
+                builder.setMessage(LocaleController.getString("ChannelSettingsChangedAlert", R.string.ChannelSettingsChangedAlert));
+            } else {
+                builder.setMessage(LocaleController.getString("GroupSettingsChangedAlert", R.string.GroupSettingsChangedAlert));
+            }
+            builder.setPositiveButton(LocaleController.getString("ApplyTheme", R.string.ApplyTheme), (dialogInterface, i) -> processDone());
+            builder.setNegativeButton(LocaleController.getString("PassportDiscard", R.string.PassportDiscard), (dialog, which) -> finishFragment());
+            showDialog(builder.create());
+            return false;
+        }
         return true;
     }
 

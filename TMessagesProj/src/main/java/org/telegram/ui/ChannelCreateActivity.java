@@ -99,19 +99,19 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
     private LinearLayout linearLayout;
     private LinearLayout adminnedChannelsLayout;
     private LinearLayout linkContainer;
-    private LinearLayout contentRestrictionContainer;
+    private LinearLayout noForwardsContainer;
     private LinearLayout publicContainer;
     private LinearLayout privateContainer;
     private LinkActionView permanentLinkView;
     private RadioButtonCell radioButtonCell1;
     private RadioButtonCell radioButtonCell2;
     private TextInfoPrivacyCell typeInfoCell;
-    private TextInfoPrivacyCell restrictionInfoCell;
+    private TextInfoPrivacyCell noForwardsInfoCell;
     private TextView helpTextView;
     private TextView checkTextView;
     private HeaderCell headerCell;
-    private HeaderCell contentRestrictionCell;
-    private TextCheckCell restrictionSavingContentCheck;
+    private HeaderCell noForwardsHeaderCell;
+    private TextCheckCell noForwardsCheckCell;
     private int checkReqId;
     private String lastCheckName;
     private Runnable checkRunnable;
@@ -119,6 +119,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
     private boolean isPrivate;
     private boolean loadingInvite;
     private TLRPC.TL_chatInviteExported invite;
+    private boolean noForwards;
 
     private boolean loadingAdminedChannels;
     private TextInfoPrivacyCell adminedInfoCell;
@@ -308,6 +309,8 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
                                     MessagesController.getInstance(currentAccount).updateChannelUserName(chatId, lastCheckName);
                                 }
                             }
+                        } else {
+                            getMessagesController().toggleChannelNoForwards(chatId, noForwards);
                         }
                         Bundle args = new Bundle();
                         args.putInt("step", 2);
@@ -755,20 +758,24 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             adminedInfoCell.setBackgroundDrawable(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
             linearLayout.addView(adminedInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-            contentRestrictionContainer = new LinearLayout(context);
-            contentRestrictionContainer.setOrientation(LinearLayout.VERTICAL);
-            contentRestrictionContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            linearLayout.addView(contentRestrictionContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-            contentRestrictionCell = new HeaderCell(context);
-            contentRestrictionContainer.addView(contentRestrictionCell);
-            contentRestrictionCell.setText("Saving content");
-            restrictionSavingContentCheck = new TextCheckCell(context);
-            restrictionSavingContentCheck.setTextAndCheck("Restrict saving content", true, false);
-            contentRestrictionContainer.addView(restrictionSavingContentCheck);
-            restrictionInfoCell = new TextInfoPrivacyCell(context);
-            restrictionInfoCell.setBackground(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
-            linearLayout.addView(restrictionInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-            restrictionInfoCell.setText("Participants won't be able to forward messages from this channel or save media files.");
+            noForwardsContainer = new LinearLayout(context);
+            noForwardsContainer.setOrientation(LinearLayout.VERTICAL);
+            noForwardsContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            linearLayout.addView(noForwardsContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            noForwardsHeaderCell = new HeaderCell(context);
+            noForwardsContainer.addView(noForwardsHeaderCell);
+            noForwardsHeaderCell.setText("Saving content");
+            noForwardsCheckCell = new TextCheckCell(context);
+            noForwardsCheckCell.setTextAndCheck("Restrict saving content", noForwards, false);
+            noForwardsCheckCell.setOnClickListener(v -> {
+                noForwards = !noForwards;
+                ((TextCheckCell) v).setChecked(noForwards);
+            });
+            noForwardsContainer.addView(noForwardsCheckCell);
+            noForwardsInfoCell = new TextInfoPrivacyCell(context);
+            noForwardsInfoCell.setBackground(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
+            linearLayout.addView(noForwardsInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            noForwardsInfoCell.setText("Participants won't be able to forward messages from this channel or save media files.");
 
             updatePrivatePublic();
         }
@@ -840,8 +847,8 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             linkContainer.setPadding(0, 0, 0, isPrivate ? 0 : AndroidUtilities.dp(7));
             permanentLinkView.setLink(invite != null ? invite.link : null);
             checkTextView.setVisibility(!isPrivate && checkTextView.length() != 0 ? View.VISIBLE : View.GONE);
-            contentRestrictionContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
-            restrictionInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
+            noForwardsContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
+            noForwardsInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
         }
         radioButtonCell1.setChecked(!isPrivate, true);
         radioButtonCell2.setChecked(isPrivate, true);
@@ -1242,7 +1249,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
         themeDescriptions.add(new ThemeDescription(sectionCell, ThemeDescription.FLAG_BACKGROUNDFILTER, null, null, null, null, Theme.key_windowBackgroundGrayShadow));
         themeDescriptions.add(new ThemeDescription(headerCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(headerCell2, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
-        themeDescriptions.add(new ThemeDescription(contentRestrictionCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
+        themeDescriptions.add(new ThemeDescription(noForwardsHeaderCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteHintText));
         themeDescriptions.add(new ThemeDescription(checkTextView, ThemeDescription.FLAG_TEXTCOLOR | ThemeDescription.FLAG_CHECKTAG, null, null, null, null, Theme.key_windowBackgroundWhiteRedText4));

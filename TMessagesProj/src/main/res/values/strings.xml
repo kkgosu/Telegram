@@ -778,6 +778,8 @@
     <string name="EventLogToggledInvitesOff">un1 disabled group invites</string>
     <string name="EventLogToggledSignaturesOn">un1 enabled signatures</string>
     <string name="EventLogToggledSignaturesOff">un1 disabled signatures</string>
+    <string name="EventLogToggledNoForwardsOn">un1 enabled no forwards</string>
+    <string name="EventLogToggledNoForwardsOff">un1 disabled no forwards</string>
     <string name="EventLogRestrictedUntil">changed permissions for %1$s\n\nDuration: %2$s</string>
     <string name="EventLogDefaultPermissions">changed default permissions</string>
     <string name="EventLogRestrictedSendStickers">Send stickers &amp; GIFs</string>
@@ -908,6 +910,10 @@
     <string name="SponsoredMessageAlertText">See https://telegram.org</string>
     <string name="SponsoredMessageAlertLearnMore">LEARN MORE</string>
     <string name="SponsoredMessageAlertLearnMoreUrl">https://telegram.org</string>
+    <string name="ForwardsFromChannelAreRestricted">Forwards from this channel\nare restricted.</string>
+    <string name="ForwardsFromGroupAreRestricted">Forwards from this group\nare restricted.</string>
+    <string name="ForwardsFromChannelAreRestrictedHint">Forwards from this channel are restricted</string>
+    <string name="ForwardsFromGroupAreRestrictedHint">Forwards from this group are restricted</string>
     <string name="InstantViewNightMode">The dark theme will turn automatically during night time</string>
     <string name="InstantViewReference">Reference</string>
     <string name="IsSendingGame">%1$s is playing a game...</string>

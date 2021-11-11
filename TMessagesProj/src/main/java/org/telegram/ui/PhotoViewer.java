@@ -10546,6 +10546,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             pageBlocksAdapter.updateSlideshowCell(pageBlock);
         }
         setCurrentCaption(newMessageObject, caption, animateCaption);
+        applyOnContentSharingRestriction();
     }
 
     private void showVideoTimeline(boolean show, boolean animated) {
@@ -10899,6 +10900,26 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
         }
         detectFaces();
+    }
+
+    private void applyOnContentSharingRestriction() {
+        long dialogId = currentDialogId;
+        if (currentMessageObject != null) {
+            dialogId = currentMessageObject.getDialogId();
+        }
+        TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
+        if (chat != null && chat.noforwards) {
+            menuItem.hideSubItem(gallery_menu_save);
+            menuItem.hideSubItem(gallery_menu_send);
+            menuItem.hideSubItem(gallery_menu_share);
+            menuItem.hideSubItem(gallery_menu_share2);
+            menuItem.hideSubItem(gallery_menu_savegif);
+            setItemVisible(sendItem, false, false);
+            setItemVisible(shareItem, false, false);
+            shareButton.setVisibility(View.GONE);
+        } else {
+            shareButton.setVisibility(View.VISIBLE);
+        }
     }
 
     private void setCurrentCaption(MessageObject messageObject, final CharSequence caption, boolean animated) {
@@ -11992,10 +12013,15 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             } else {
                 windowLayoutParams.flags = WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM;
             }
-            if (chatActivity != null && chatActivity.getCurrentEncryptedChat() != null) {
+            if (chatActivity != null && (chatActivity.getCurrentEncryptedChat() != null || (chatActivity.currentChat != null && chatActivity.currentChat.noforwards))) {
                 windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE;
             } else {
-                windowLayoutParams.flags &=~ WindowManager.LayoutParams.FLAG_SECURE;
+                final TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
+                if (chat != null && chat.noforwards) {
+                    windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE;
+                } else {
+                    windowLayoutParams.flags &=~ WindowManager.LayoutParams.FLAG_SECURE;
+                }
             }
             windowLayoutParams.softInputMode = (useSmoothKeyboard ? WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN : WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) | WindowManager.LayoutParams.SOFT_INPUT_IS_FORWARD_NAVIGATION;
             windowView.setFocusable(false);
@@ -12079,6 +12105,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
 
             onPhotoShow(messageObject, fileLocation, imageLocation, videoLocation, messages, documents, photos, index, object);
+            applyOnContentSharingRestriction();
             if (sendPhotoType == SELECT_TYPE_AVATAR) {
                 photoCropView.setVisibility(View.VISIBLE);
                 photoCropView.setAlpha(0.0f);

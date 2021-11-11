@@ -1,7 +1,6 @@
 package org.telegram.ui.Components;
 
 import static org.telegram.messenger.MediaDataController.MEDIA_PHOTOVIDEO;
-import static org.telegram.messenger.MediaDataController.getMediaType;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -55,8 +54,6 @@ import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.exoplayer2.util.Log;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -1431,7 +1428,17 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             forwardItem.setDuplicateParentStateEnabled(false);
             actionModeLayout.addView(forwardItem, new LinearLayout.LayoutParams(AndroidUtilities.dp(54), ViewGroup.LayoutParams.MATCH_PARENT));
             actionModeViews.add(forwardItem);
-            forwardItem.setOnClickListener(v -> onActionBarItemClick(forward));
+            TLRPC.Chat currentChat = profileActivity.getMessagesController().getChat(-dialog_id);
+            if (currentChat != null && currentChat.noforwards) {
+                forwardItem.setIconColor(getThemedColor(Theme.key_buttonDisabled));
+            }
+            forwardItem.setOnClickListener(v -> {
+                if (currentChat != null && currentChat.noforwards) {
+                    showNoForwardsHint();
+                } else {
+                    onActionBarItemClick(forward);
+                }
+            });
         }
         deleteItem = new ActionBarMenuItem(context, null, Theme.getColor(Theme.key_actionBarActionModeDefaultSelector), Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2), false);
         deleteItem.setIcon(R.drawable.msg_delete);
@@ -2141,6 +2148,24 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         if (hasMedia[0] >= 0) {
             loadFastScrollData(false);
         }
+    }
+
+    private void showNoForwardsHint() {
+        HintView noForwardHint = new HintView(getContext(), 9, profileActivity.getResourceProvider());
+        String text = ChatObject.isChannel(dialog_id, profileActivity.getCurrentAccount()) ?
+                LocaleController.getString("ForwardsFromChannelAreRestrictedHint", R.string.ForwardsFromChannelAreRestrictedHint) :
+                LocaleController.getString("ForwardsFromGroupAreRestrictedHint", R.string.ForwardsFromGroupAreRestrictedHint);
+        noForwardHint.setText(text);
+        View parentLayout = profileActivity.getFragmentView();
+        if (parentLayout instanceof ViewGroup) {
+            ((ViewGroup)parentLayout).addView(noForwardHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 19, 0, 19, 0));
+        }
+        noForwardHint.showForView(forwardItem, true);
+    }
+
+    private int getThemedColor(String key) {
+        Integer color = profileActivity.getResourceProvider() != null ? profileActivity.getResourceProvider().getColor(key) : null;
+        return color != null ? color : Theme.getColor(key);
     }
 
     private int getMessageId(View child) {
