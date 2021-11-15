@@ -1865,8 +1865,10 @@ public class MessagesStorage extends BaseController {
                                 int onlyHistory = data.readInt32(false);
                                 int maxIdDelete = data.readInt32(false);
                                 boolean revoke = data.readBool(false);
+                                int mindate = data.readInt32(false);
+                                int maxdate = data.readInt32(false);
                                 TLRPC.InputPeer inputPeer = TLRPC.InputPeer.TLdeserialize(data, data.readInt32(false), false);
-                                AndroidUtilities.runOnUIThread(() -> getMessagesController().deleteDialog(did, first ? 1 : 0, onlyHistory, maxIdDelete, revoke, inputPeer, taskId));
+                                AndroidUtilities.runOnUIThread(() -> getMessagesController().deleteDialog(did, first ? 1 : 0, onlyHistory, maxIdDelete, revoke, inputPeer, taskId, maxdate, mindate));
                                 break;
                             }
                             case 15: {

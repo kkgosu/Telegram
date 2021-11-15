@@ -50,6 +50,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -129,6 +130,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             MediaDataController.MEDIA_AUDIO,
             MediaDataController.MEDIA_MUSIC
     };
+    private HintView noForwardHint;
 
     public boolean isInFastScroll() {
         return mediaPages[0] != null && mediaPages[0].listView.getFastScroll() != null && mediaPages[0].listView.getFastScroll().isPressed();
@@ -1430,7 +1432,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             actionModeViews.add(forwardItem);
             TLRPC.Chat currentChat = profileActivity.getMessagesController().getChat(-dialog_id);
             if (currentChat != null && currentChat.noforwards) {
-                forwardItem.setIconColor(getThemedColor(Theme.key_buttonDisabled));
+                forwardItem.setIconColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_windowBackgroundWhiteGrayText2), (int)(255 * 0.33f)));
             }
             forwardItem.setOnClickListener(v -> {
                 if (currentChat != null && currentChat.noforwards) {
@@ -2151,16 +2153,23 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
     }
 
     private void showNoForwardsHint() {
-        HintView noForwardHint = new HintView(getContext(), 9, profileActivity.getResourceProvider());
-        String text = ChatObject.isChannel(dialog_id, profileActivity.getCurrentAccount()) ?
+        noForwardHint = new HintView(getContext(), 9, profileActivity.getResourceProvider());
+        String text = ChatObject.isChannel(-dialog_id, profileActivity.getCurrentAccount()) ?
                 LocaleController.getString("ForwardsFromChannelAreRestrictedHint", R.string.ForwardsFromChannelAreRestrictedHint) :
                 LocaleController.getString("ForwardsFromGroupAreRestrictedHint", R.string.ForwardsFromGroupAreRestrictedHint);
         noForwardHint.setText(text);
         View parentLayout = profileActivity.getFragmentView();
         if (parentLayout instanceof ViewGroup) {
-            ((ViewGroup)parentLayout).addView(noForwardHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 19, 0, 19, 0));
+            ((ViewGroup)parentLayout).addView(
+                    noForwardHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 19, 0, 19, 0));
         }
         noForwardHint.showForView(forwardItem, true);
+    }
+
+    private void hideNoForwardsHint() {
+        if (noForwardHint != null) {
+            noForwardHint.hide();
+        }
     }
 
     private int getThemedColor(String key) {
@@ -2290,10 +2299,10 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         MediaCalendarActivity calendarActivity = new MediaCalendarActivity(bundle, sharedMediaData[0].filterType, date);
         calendarActivity.setCallback(new MediaCalendarActivity.Callback() {
             @Override
-            public void onDateSelected(int messageId, int startOffset) {
+            public void onDateSelected(MessageObject messageObject, int startOffset) {
                 int index = -1;
                 for (int i = 0; i < sharedMediaData[0].messages.size(); i++) {
-                    if (sharedMediaData[0].messages.get(i).getId() == messageId) {
+                    if (sharedMediaData[0].messages.get(i).getId() == messageObject.getId()) {
                         index = i;
                     }
                 }
@@ -2301,12 +2310,16 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 if (index >= 0 && mediaPage != null) {
                     mediaPage.layoutManager.scrollToPositionWithOffset(index, 0);
                 } else {
-                    jumpToDate(0, messageId, startOffset, true);
+                    jumpToDate(0, messageObject.getId(), startOffset, true);
                 }
                 if (mediaPage != null) {
-                    mediaPage.highlightMessageId = messageId;
+                    mediaPage.highlightMessageId = messageObject.getId();
                     mediaPage.highlightAnimation = false;
                 }
+            }
+
+            @Override
+            public void onDateClicked(int timestamp) {
             }
         });
         profileActivity.presentFragment(calendarActivity);
@@ -3248,6 +3261,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        hideNoForwardsHint();
         return checkTabsAnimationInProgress() || scrollSlidingTextTabStrip.isAnimatingIndicator() || onTouchEvent(ev);
     }
 
@@ -3261,6 +3275,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        hideNoForwardsHint();
         if (profileActivity.getParentLayout() != null && !profileActivity.getParentLayout().checkTransitionAnimation() && !checkTabsAnimationInProgress() && !isInPinchToZoomTouchMode) {
             if (ev != null) {
                 if (velocityTracker == null) {

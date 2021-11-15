@@ -4870,7 +4870,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (nameTextView[1] != null) {
             setParentActivityTitle(nameTextView[1].getText());
         }
-        AndroidUtilities.setFlagSecure(this, getMessagesController().getChat(chatId).noforwards);
+        final TLRPC.Chat chat = getMessagesController().getChat(chatId);
+        if (chat != null) {
+            AndroidUtilities.setFlagSecure(this, chat.noforwards);
+        }
     }
 
     @Override

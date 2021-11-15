@@ -3388,6 +3388,7 @@ public class Theme {
     public static final String key_chat_searchPanelText = "chat_searchPanelText";
     public static final String key_chat_secretChatStatusText = "chat_secretChatStatusText";
     public static final String key_chat_fieldOverlayText = "chat_fieldOverlayText";
+    public static final String key_chat_fieldOverlayTextWarning = "chat_fieldOverlayTextWarning";
     public static final String key_chat_stickersHintPanel = "chat_stickersHintPanel";
     public static final String key_chat_botSwitchToInlineText = "chat_botSwitchToInlineText";
     public static final String key_chat_unreadMessagesStartArrowIcon = "chat_unreadMessagesStartArrowIcon";
@@ -3527,6 +3528,9 @@ public class Theme {
     public static final String key_profile_tabSelectedText = "profile_tabSelectedText";
     public static final String key_profile_tabSelectedLine = "profile_tabSelectedLine";
     public static final String key_profile_tabSelector = "profile_tabSelector";
+    public static final String key_calendar_selected_day_edge = "calendar_selected_day_edge";
+    public static final String key_calendar_selected_day_inner = "calendar_selected_day_inner";
+
 
     public static final String key_sharedMedia_startStopLoadIcon = "sharedMedia_startStopLoadIcon";
     public static final String key_sharedMedia_linkPlaceholder = "sharedMedia_linkPlaceholder";
@@ -4216,6 +4220,7 @@ public class Theme {
         defaultColors.put(key_chat_searchPanelText, 0xff676a6f);
         defaultColors.put(key_chat_secretChatStatusText, 0xff7f7f7f);
         defaultColors.put(key_chat_fieldOverlayText, 0xff3a8ccf);
+        defaultColors.put(key_chat_fieldOverlayTextWarning, 0xffec898a);
         defaultColors.put(key_chat_stickersHintPanel, 0xffffffff);
         defaultColors.put(key_chat_replyPanelIcons, 0xff57a8e6);
         defaultColors.put(key_chat_replyPanelClose, 0xff8e959b);
@@ -4293,6 +4298,8 @@ public class Theme {
         defaultColors.put(key_profile_tabSelectedText, 0xff3a95d5);
         defaultColors.put(key_profile_tabSelectedLine, 0xff4fa6e9);
         defaultColors.put(key_profile_tabSelector, 0x0f000000);
+        defaultColors.put(key_calendar_selected_day_edge, 0xff4fa6e7);
+        defaultColors.put(key_calendar_selected_day_inner, 0xffe4f0fb);
 
         defaultColors.put(key_player_actionBar, 0xffffffff);
         defaultColors.put(key_player_actionBarSelector, 0x0f000000);

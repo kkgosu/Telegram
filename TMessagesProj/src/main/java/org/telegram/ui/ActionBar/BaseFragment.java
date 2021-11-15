@@ -364,6 +364,10 @@ public abstract class BaseFragment {
         return parentLayout != null && parentLayout.presentFragmentAsPreview(fragment);
     }
 
+    public boolean getFragmentAsPreviewFromCalendar(BaseFragment fragment) {
+        return parentLayout != null && parentLayout.presentFragmentAsPreviewFromCalendar(fragment);
+    }
+
     public boolean presentFragment(BaseFragment fragment) {
         return parentLayout != null && parentLayout.presentFragment(fragment);
     }
@@ -373,7 +377,7 @@ public abstract class BaseFragment {
     }
 
     public boolean presentFragment(BaseFragment fragment, boolean removeLast, boolean forceWithoutAnimation) {
-        return parentLayout != null && parentLayout.presentFragment(fragment, removeLast, forceWithoutAnimation, true, false);
+        return parentLayout != null && parentLayout.presentFragment(fragment, removeLast, forceWithoutAnimation, true, false, false);
     }
 
     public Activity getParentActivity() {

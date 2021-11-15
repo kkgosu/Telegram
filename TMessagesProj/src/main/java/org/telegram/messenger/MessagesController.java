@@ -4838,7 +4838,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void deleteDialog(final long did, int onlyHistory, boolean revoke) {
-        deleteDialog(did, 1, onlyHistory, 0, revoke, null, 0);
+        deleteDialog(did, 1, onlyHistory, 0, revoke, null, 0, 0, 0);
     }
 
     public void setDialogHistoryTTL(long did, int ttl) {
@@ -4886,7 +4886,11 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
-    protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId) {
+    public void deleteMessageHistoryForDaysRange(long did, int minDate, int maxDate) {
+        deleteDialog(did, 0, 1, 0, true, null, 0, minDate, maxDate);
+    }
+
+    protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId, int minDate, int maxDate) {
         if (onlyHistory == 2) {
             getMessagesStorage().deleteDialog(did, onlyHistory);
             return;
@@ -4894,7 +4898,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if (first == 1 && max_id == 0) {
             TLRPC.InputPeer peerFinal = peer;
             getMessagesStorage().getDialogMaxMessageId(did, (param) -> {
-                deleteDialog(did, 2, onlyHistory, Math.max(0, param), revoke, peerFinal, taskId);
+                deleteDialog(did, 2, onlyHistory, Math.max(0, param), revoke, peerFinal, taskId, minDate, maxDate);
                 checkIfFolderEmpty(1);
             });
             return;
@@ -5071,9 +5075,15 @@ public class MessagesController extends BaseController implements NotificationCe
             } else {
                 TLRPC.TL_messages_deleteHistory req = new TLRPC.TL_messages_deleteHistory();
                 req.peer = peer;
-                req.max_id = max_id_delete > 0 ? max_id_delete : Integer.MAX_VALUE;
+                if (minDate == 0 && maxDate == 0) {
+                    req.max_id = 0;
+                } else {
+                    req.max_id = max_id_delete > 0 ? max_id_delete : Integer.MAX_VALUE;
+                }
                 req.just_clear = onlyHistory != 0;
                 req.revoke = revoke;
+                req.min_date = minDate;
+                req.max_date = maxDate;
                 int max_id_delete_final = max_id_delete;
                 TLRPC.InputPeer peerFinal = peer;
                 getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -5083,7 +5093,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     if (error == null) {
                         TLRPC.TL_messages_affectedHistory res = (TLRPC.TL_messages_affectedHistory) response;
                         if (res.offset > 0) {
-                            deleteDialog(did, 0, onlyHistory, max_id_delete_final, revoke, peerFinal, 0);
+                            deleteDialog(did, 0, onlyHistory, max_id_delete_final, revoke, peerFinal, 0, minDate, maxDate);
                         }
                         processNewDifferenceParams(-1, res.pts, -1, res.pts_count);
                         getMessagesStorage().onDeleteQueryComplete(did);

@@ -2604,6 +2604,9 @@
     <string name="NoSharedLinksSecret">Shared links from this chat will be shown here.</string>
     <string name="NoSharedVoiceSecret">Voice messages from this chat will be shown here.</string>
     <string name="NoSharedGifSecret">GIFs from this chat will be shown here.</string>
+    <string name="CalendarSelectDaysButton">SELECT DAYS</string>
+    <string name="CalendarClearHistoryButton">CLEAR HISTORY</string>
+    <string name="CalendarSelectDaysTitle">Select days</string>
     <!--map view-->
     <string name="Map">Map</string>
     <string name="Satellite">Satellite</string>
@@ -2765,6 +2768,8 @@
     <string name="AreYouSureDeletePhotoEveryone">Are you sure you want to delete this photo for everyone?</string>
     <string name="AreYouSureDeleteVideoEveryone">Are you sure you want to delete this video for everyone?</string>
     <string name="AreYouSureDeleteGIFEveryone">Are you sure you want to delete this GIF for everyone?</string>
+    <string name="AreYouSureDeleteMessagesCalendar">Are you sure you want to delete all messages for the</string>
+    <string name="AreYouSureDeleteMessagesCalendarTitle">Delete messages</string>
     <string name="DiscardChanges">Discard changes?</string>
     <string name="PhotoEditorDiscardAlert">Are you sure you want to discard all changes?</string>
     <string name="ClearSearch">Clear search history?</string>
@@ -3868,6 +3873,24 @@
     <string name="ContactShortcutVoiceCall">Voice call %1$s</string>
     <string name="ContactShortcutVideoCall">Video call %1$s</string>
     <!--plural-->
+    <string name="CalendarMessagesCount_zero">%1$d messages</string>
+    <string name="CalendarMessagesCount_one">%1$d message</string>
+    <string name="CalendarMessagesCount_two">%1$d messages</string>
+    <string name="CalendarMessagesCount_few">%1$d messages</string>
+    <string name="CalendarMessagesCount_many">%1$d messages</string>
+    <string name="CalendarMessagesCount_other">%1$d messages</string>
+    <string name="SelectedDaysCount_zero">%1$d selected days?</string>
+    <string name="SelectedDaysCount_one">%1$d selected day?</string>
+    <string name="SelectedDaysCount_two">%1$d selected days?</string>
+    <string name="SelectedDaysCount_few">%1$d selected days?</string>
+    <string name="SelectedDaysCount_many">%1$d selected days?</string>
+    <string name="SelectedDaysCount_other">%1$d selected days?</string>
+    <string name="CalendarDaysCount_zero">%1$d days</string>
+    <string name="CalendarDaysCount_one">%1$d day</string>
+    <string name="CalendarDaysCount_two">%1$d days</string>
+    <string name="CalendarDaysCount_few">%1$d days</string>
+    <string name="CalendarDaysCount_many">%1$d days</string>
+    <string name="CalendarDaysCount_other">%1$d days</string>
     <string name="MembersAreSpeakingToast_zero">un1 are speaking</string>
     <string name="MembersAreSpeakingToast_one">un1 is speaking</string>
     <string name="MembersAreSpeakingToast_two">un1 are speaking</string>
