@@ -14558,6 +14558,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 }
                 showGigagroupConvertAlert();
                 long prevLinkedChatId = chatInfo != null ? chatInfo.linked_chat_id : 0;
+                boolean isLastChatInfoNull = chatInfo == null;
                 chatInfo = chatFull;
                 groupCall = getMessagesController().getGroupCall(currentChat.id, true);
                 if (ChatObject.isChannel(currentChat) && currentChat.megagroup && fragmentContextView != null) {
@@ -14662,6 +14663,19 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 checkThemeEmoticon();
                 if (pendingRequestsDelegate != null) {
                     pendingRequestsDelegate.setChatInfo(chatInfo, true);
+                }
+                if(chatListView!=null && !isLastChatInfoNull){
+                    for(int i=0;i<chatListView.getChildCount();i++){
+                        View child=chatListView.getChildAt(i);
+                        if(child instanceof ChatMessageCell){
+                            ((ChatMessageCell)child).updateShareButton();
+                        }
+                    }
+                }
+                if(currentChat.noforwards){
+                    forwardButton.setAlpha(0.5f);
+                }else{
+                    forwardButton.setAlpha(1);
                 }
             }
         } else if (id == NotificationCenter.chatInfoCantLoad) {

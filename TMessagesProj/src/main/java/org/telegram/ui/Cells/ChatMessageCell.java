@@ -9612,6 +9612,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return currentBackgroundDrawable != null && x >= backgroundDrawableLeft && x <= backgroundDrawableLeft + backgroundDrawableRight;
     }
 
+    public void updateShareButton(){
+        currentMessageObject.forceUpdate=true;
+        setMessageContent(currentMessageObject, currentMessagesGroup, pinnedBottom, pinnedTop);
+    }
+
     private void updateCurrentUserAndChat() {
         MessagesController messagesController = MessagesController.getInstance(currentAccount);
         TLRPC.MessageFwdHeader fwd_from = currentMessageObject.messageOwner.fwd_from;
