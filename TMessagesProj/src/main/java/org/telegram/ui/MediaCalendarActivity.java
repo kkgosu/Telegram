@@ -332,7 +332,7 @@ public class MediaCalendarActivity extends BaseFragment {
                 LocaleController.getString("AreYouSureDeleteMessagesCalendarTitle", R.string.AreYouSureDeleteMessagesCalendarTitle));
         final String areYouSureDeleteMessages = LocaleController
                 .getString("AreYouSureDeleteMessagesCalendar", R.string.AreYouSureDeleteMessagesCalendar);
-        final String selectedDaysCount = LocaleController.formatPluralString("SelectedDaysCount", selectedDays);
+        final String selectedDaysCount = LocaleController.formatPluralString("SelectedDaysCount", isSingleDay ? 1 : selectedDays);
         builder.setMessage(String.format("%s %s", areYouSureDeleteMessages, selectedDaysCount));
         CheckBoxCell cell = new CheckBoxCell(getParentActivity(), 1, getResourceProvider());
         cell.setBackground(Theme.getSelectorDrawable(false));
