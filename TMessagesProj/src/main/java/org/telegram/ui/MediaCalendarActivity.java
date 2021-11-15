@@ -600,7 +600,6 @@ public class MediaCalendarActivity extends BaseFragment {
 
                 @Override
                 public boolean onDown(MotionEvent e) {
-                    //somehow always onLongClick
                     return true;
                 }
 
@@ -610,35 +609,31 @@ public class MediaCalendarActivity extends BaseFragment {
                 @Override
                 public boolean onSingleTapUp(MotionEvent event) {
                     if (event.getAction() == MotionEvent.ACTION_UP) {
-                        pressed = true;
                         pressedX = event.getX();
                         pressedY = event.getY();
-                        if (pressed) {
-                            if (isFromChat) {
-                                for (int i = 0, n = allDays.size(); i < n; i++) {
-                                    if (allDays.valueAt(i).getDrawRegion().contains(pressedX, pressedY)) {
-                                        callback.onDateClicked(timeStamps.get(i));
-                                        break;
-                                    }
+                        if (isFromChat) {
+                            for (int i = 0, n = allDays.size(); i < n; i++) {
+                                if (allDays.valueAt(i).getDrawRegion().contains(pressedX, pressedY)) {
+                                    callback.onDateClicked(timeStamps.get(i));
+                                    return true;
                                 }
-                            } else {
-                                for (int i = 0; i < imagesByDays.size(); i++) {
-                                    if (imagesByDays.valueAt(i).getDrawRegion().contains(pressedX, pressedY)) {
-                                        if (callback != null) {
-                                            PeriodDay periodDay = messagesByDays.valueAt(i);
-                                            callback.onDateSelected(periodDay.messageObject, periodDay.startOffset);
-                                            finishFragment();
-                                            break;
-                                        }
+                            }
+                        } else {
+                            for (int i = 0; i < imagesByDays.size(); i++) {
+                                if (imagesByDays.valueAt(i).getDrawRegion().contains(pressedX, pressedY)) {
+                                    if (callback != null) {
+                                        PeriodDay periodDay = messagesByDays.valueAt(i);
+                                        callback.onDateSelected(periodDay.messageObject, periodDay.startOffset);
+                                        finishFragment();
+                                        return true;
                                     }
                                 }
                             }
                         }
-                        pressed = false;
                     } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
-                        pressed = false;
+                        return false;
                     }
-                    return pressed;
+                    return false;
                 }
 
                 @Override
@@ -648,7 +643,6 @@ public class MediaCalendarActivity extends BaseFragment {
 
                 @Override
                 public void onLongPress(MotionEvent event) {
-                    pressed = true;
                     pressedX = event.getX();
                     pressedY = event.getY();
                     if (isFromChat) {
@@ -1003,7 +997,11 @@ public class MediaCalendarActivity extends BaseFragment {
     }
 
     public void jumpToDate(int date) {
-        hidePreview();
+        Bundle args = new Bundle();
+        args.putInt("jump_to_date", date);
+        args.putLong("user_id", dialogId);
+        ChatActivity chatActivity = new ChatActivity(args);
+        presentFragment(chatActivity, true);
     }
 
     public void clearHistory() {
@@ -1094,7 +1092,7 @@ public class MediaCalendarActivity extends BaseFragment {
             jumpToDateCell.setTextAndIcon(LocaleController.getString("JumpToDate", R.string.JumpToDate), R.drawable.msg_message);
             jumpToDateCell.setOnClickListener((v) -> {
                 isJumpToDaySelected = true;
-                jumpToDate(selectedDay);
+                hidePreview();
             });
             popupLayout.addView(jumpToDateCell);
 
