@@ -3494,6 +3494,9 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         }
         if (show) {
             actionModeLayout.setVisibility(VISIBLE);
+            profileActivity.getNotificationCenter().addObserver(this, NotificationCenter.chatInfoDidLoad);
+        } else {
+            profileActivity.getNotificationCenter().removeObserver(this, NotificationCenter.chatInfoDidLoad);
         }
         actionModeAnimation = new AnimatorSet();
         actionModeAnimation.playTogether(ObjectAnimator.ofFloat(actionModeLayout, View.ALPHA, show ? 1.0f : 0.0f));
@@ -3839,6 +3842,13 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                         }
                     }
                 }
+            }
+        } else if(id==NotificationCenter.chatInfoDidLoad){
+            TLRPC.Chat currentChat = profileActivity.getMessagesController().getChat(-dialog_id);
+            if (currentChat != null && currentChat.noforwards) {
+                forwardItem.setIconColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_windowBackgroundWhiteGrayText2), (int)(255 * 0.33f)));
+            } else {
+                forwardItem.setIconColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_windowBackgroundWhiteGrayText2), 255));
             }
         }
     }

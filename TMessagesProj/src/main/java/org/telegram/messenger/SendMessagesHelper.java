@@ -5472,6 +5472,13 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         AlertsCreator.processError(currentAccount, error, null, req);
                         isSentError = true;
                     }
+                    if (error != null && "CHAT_FORWARDS_RESTRICTED".equals(error.text)) {
+                        TLRPC.Peer peer = newMsgObj.fwd_from.from_id;
+                        getMessagesController().loadFullChat(peer.chat_id == 0 ? peer.channel_id : peer.chat_id, 0, true);
+                        AlertsCreator.processError(currentAccount, error, null, req, peer.chat_id == 0);
+                    } else {
+                        AlertsCreator.processError(currentAccount, error, null, req);
+                    }
                     if (isSentError) {
                         getMessagesStorage().markMessageAsSendError(newMsgObj, scheduled);
                         newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SEND_ERROR;

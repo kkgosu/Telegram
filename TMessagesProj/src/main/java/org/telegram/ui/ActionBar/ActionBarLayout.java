@@ -317,6 +317,7 @@ public class ActionBarLayout extends FrameLayout {
 
     private float animationProgress;
     private long lastFrameTime;
+    private boolean isPreviewDrawNeeded;
 
     private String titleOverlayText;
     private int titleOverlayTextId;
@@ -577,7 +578,7 @@ public class ActionBarLayout extends FrameLayout {
 
     private void drawPreviewDrawables(Canvas canvas, ViewGroup containerView) {
         View view = containerView.getChildAt(0);
-        if (view != null) {
+        if (view != null && isPreviewDrawNeeded) {
             previewBackgroundDrawable.setBounds(0, 0, getMeasuredWidth(), getMeasuredHeight());
             previewBackgroundDrawable.draw(canvas);
             int x = (getMeasuredWidth() - AndroidUtilities.dp(24)) / 2;
@@ -940,8 +941,8 @@ public class ActionBarLayout extends FrameLayout {
         containerViewBack.setVisibility(View.INVISIBLE);
     }
 
-    public boolean presentFragmentAsPreviewFromCalendar(BaseFragment fragment) {
-        return presentFragment(fragment, false, false, true, true, true);
+    public void drawPreviewFromCalendar(boolean isDrawNeeded) {
+        isPreviewDrawNeeded = isDrawNeeded;
     }
 
     public boolean presentFragmentAsPreview(BaseFragment fragment) {

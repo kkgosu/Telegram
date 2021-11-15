@@ -364,10 +364,6 @@ public abstract class BaseFragment {
         return parentLayout != null && parentLayout.presentFragmentAsPreview(fragment);
     }
 
-    public boolean getFragmentAsPreviewFromCalendar(BaseFragment fragment) {
-        return parentLayout != null && parentLayout.presentFragmentAsPreviewFromCalendar(fragment);
-    }
-
     public boolean presentFragment(BaseFragment fragment) {
         return parentLayout != null && parentLayout.presentFragment(fragment);
     }

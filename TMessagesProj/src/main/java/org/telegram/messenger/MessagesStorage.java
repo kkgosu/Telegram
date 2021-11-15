@@ -3208,6 +3208,24 @@ public class MessagesStorage extends BaseController {
         storageQueue.postRunnable(this::saveDialogFiltersOrderInternal);
     }
 
+    public void deleteMessageHistoryForDaysRange(long dialogID, int minDate, int maxDate){
+        storageQueue.postRunnable(()->{
+            try{
+                ArrayList<Integer> ids=new ArrayList<>();
+                SQLiteCursor cursor=database.queryFinalized("SELECT mid FROM messages_v2 WHERE uid = ? AND date >= ? AND date <= ?", dialogID, minDate, maxDate);
+                while(cursor.next()){
+                    ids.add(cursor.intValue(0));
+                }
+                cursor.dispose();
+                markMessagesAsDeletedInternal(dialogID, ids, true, false);
+                updateDialogsWithDeletedMessagesInternal(dialogID, 0, ids, null);
+                AndroidUtilities.runOnUIThread(()->getNotificationCenter().postNotificationName(NotificationCenter.messagesDeleted, ids, 0L, false));
+            } catch(Exception x){
+                FileLog.e(x);
+            }
+        });
+    }
+
     protected static void addReplyMessages(TLRPC.Message message, LongSparseArray<SparseArray<ArrayList<TLRPC.Message>>> replyMessageOwners, LongSparseArray<ArrayList<Integer>> dialogReplyMessagesIds) {
         int messageId = message.reply_to.reply_to_msg_id;
         long dialogId = MessageObject.getReplyToDialogId(message);

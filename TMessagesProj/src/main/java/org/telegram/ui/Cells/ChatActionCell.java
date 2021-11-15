@@ -70,10 +70,6 @@ public class ChatActionCell extends BaseCell implements DownloadController.FileD
         default void needOpenInviteLink(TLRPC.TL_chatInviteExported invite) {
 
         }
-
-        default void didClickDate(ChatActionCell cell) {
-
-        }
     }
 
     public interface ThemeDelegate extends Theme.ResourcesProvider {
@@ -307,9 +303,6 @@ public class ChatActionCell extends BaseCell implements DownloadController.FileD
                 }
                 if (result) {
                     startCheckLongPress();
-                }
-                if (currentMessageObject.type == 10) {
-                    delegate.didClickDate(this);
                 }
             }
         } else {

@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:651614941198:android:d24eae7402e6c69bbfcc5f",
         "android_client_info": {
-          "package_name": "org.telegram.messenger"
+          "package_name": "org.kkgosu.messenger"
         }
       },
       "oauth_client": [
@@ -38,7 +38,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:651614941198:android:254de8566167fec7bfcc5f",
         "android_client_info": {
-          "package_name": "org.telegram.messenger.beta"
+          "package_name": "org.kkgosu.messenger.beta"
         }
       },
       "oauth_client": [

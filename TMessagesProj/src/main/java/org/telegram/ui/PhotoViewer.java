@@ -3415,6 +3415,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     }
                 }
             }
+        } else if(id == NotificationCenter.chatInfoDidLoad) {
+            applyOnContentSharingRestriction();
         }
     }
 
@@ -12052,6 +12054,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.filePreparingFailed);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.fileNewChunkAvailable);
+        NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.chatInfoDidLoad);
 
         placeProvider = provider;
         mergeDialogId = mDialogId;
@@ -12877,6 +12880,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.filePreparingFailed);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.fileNewChunkAvailable);
         ConnectionsManager.getInstance(currentAccount).cancelRequestsForGuid(classGuid);
+        NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.chatInfoDidLoad);
     }
 
     public void destroyPhotoViewer() {

@@ -21,7 +21,6 @@ import android.os.SystemClock;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.util.SparseIntArray;
@@ -47,11 +46,11 @@ import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.JoinCallAlert;
 import org.telegram.ui.Components.MotionBackgroundDrawable;
+import org.telegram.ui.Components.SwipeGestureSettingsView;
 import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.EditWidgetActivity;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.ProfileActivity;
-import org.telegram.ui.Components.SwipeGestureSettingsView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -4886,8 +4885,8 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
-    public void deleteMessageHistoryForDaysRange(long did, int minDate, int maxDate) {
-        deleteDialog(did, 0, 1, 0, true, null, 0, minDate, maxDate);
+    public void deleteMessageHistoryForDaysRange(long did, int minDate, int maxDate, boolean revoke) {
+        deleteDialog(did, 1, 1, 0, revoke, null, 0, minDate, maxDate);
     }
 
     protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId, int minDate, int maxDate) {
@@ -4913,84 +4912,88 @@ public class MessagesController extends BaseController implements NotificationCe
                 FileLog.d("delete dialog with id " + did);
             }
             boolean isPromoDialog = false;
-            getMessagesStorage().deleteDialog(did, onlyHistory);
-            TLRPC.Dialog dialog = dialogs_dict.get(did);
-            if (onlyHistory == 0 || onlyHistory == 3) {
-                getNotificationCenter().postNotificationName(NotificationCenter.dialogDeleted, did);
-                getNotificationsController().deleteNotificationChannel(did);
-                JoinCallAlert.processDeletedChat(currentAccount, did);
-            }
-            if (onlyHistory == 0) {
-                getMediaDataController().cleanDraft(did, 0, false);
-            }
-            if (dialog != null) {
-                if (first == 2) {
-                    max_id_delete = Math.max(0, dialog.top_message);
-                    max_id_delete = Math.max(max_id_delete, dialog.read_inbox_max_id);
-                    max_id_delete = Math.max(max_id_delete, dialog.read_outbox_max_id);
-                }
+            if (minDate == 0 && maxDate == 0) {
+                getMessagesStorage().deleteDialog(did, onlyHistory);
+                TLRPC.Dialog dialog = dialogs_dict.get(did);
                 if (onlyHistory == 0 || onlyHistory == 3) {
-                    if (isPromoDialog = (promoDialog != null && promoDialog.id == did)) {
-                        isLeftPromoChannel = true;
-                        if (promoDialog.id < 0) {
-                            TLRPC.Chat chat = getChat(-promoDialog.id);
-                            if (chat != null) {
-                                chat.left = true;
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogDeleted, did);
+                    getNotificationsController().deleteNotificationChannel(did);
+                    JoinCallAlert.processDeletedChat(currentAccount, did);
+                }
+                if (onlyHistory == 0) {
+                    getMediaDataController().cleanDraft(did, 0, false);
+                }
+                if (dialog != null) {
+                    if (first == 2) {
+                        max_id_delete = Math.max(0, dialog.top_message);
+                        max_id_delete = Math.max(max_id_delete, dialog.read_inbox_max_id);
+                        max_id_delete = Math.max(max_id_delete, dialog.read_outbox_max_id);
+                    }
+                    if (onlyHistory == 0 || onlyHistory == 3) {
+                        if (isPromoDialog = (promoDialog != null && promoDialog.id == did)) {
+                            isLeftPromoChannel = true;
+                            if (promoDialog.id < 0) {
+                                TLRPC.Chat chat = getChat(-promoDialog.id);
+                                if (chat != null) {
+                                    chat.left = true;
+                                }
+                            }
+                            sortDialogs(null);
+                        } else {
+                            removeDialog(dialog);
+                            int offset = nextDialogsCacheOffset.get(dialog.folder_id, 0);
+                            if (offset > 0) {
+                                nextDialogsCacheOffset.put(dialog.folder_id, offset - 1);
                             }
                         }
-                        sortDialogs(null);
                     } else {
-                        removeDialog(dialog);
-                        int offset = nextDialogsCacheOffset.get(dialog.folder_id, 0);
-                        if (offset > 0) {
-                            nextDialogsCacheOffset.put(dialog.folder_id, offset - 1);
-                        }
+                        dialog.unread_count = 0;
                     }
-                } else {
-                    dialog.unread_count = 0;
-                }
-                if (!isPromoDialog) {
-                    int lastMessageId;
-                    MessageObject object = dialogMessage.get(dialog.id);
-                    dialogMessage.remove(dialog.id);
-                    if (object != null) {
-                        lastMessageId = object.getId();
-                        if (object.messageOwner.peer_id.channel_id == 0) {
-                            dialogMessagesByIds.remove(object.getId());
+                    if (!isPromoDialog) {
+                        int lastMessageId;
+                        MessageObject object = dialogMessage.get(dialog.id);
+                        dialogMessage.remove(dialog.id);
+                        if (object != null) {
+                            lastMessageId = object.getId();
+                            if (object.messageOwner.peer_id.channel_id == 0) {
+                                dialogMessagesByIds.remove(object.getId());
+                            }
+                        } else {
+                            lastMessageId = dialog.top_message;
+                            object = dialogMessagesByIds.get(dialog.top_message);
+                            if (object != null && object.messageOwner.peer_id.channel_id == 0) {
+                                dialogMessagesByIds.remove(dialog.top_message);
+                            }
                         }
-                    } else {
-                        lastMessageId = dialog.top_message;
-                        object = dialogMessagesByIds.get(dialog.top_message);
-                        if (object != null && object.messageOwner.peer_id.channel_id == 0) {
-                            dialogMessagesByIds.remove(dialog.top_message);
+                        if (object != null && object.messageOwner.random_id != 0) {
+                            dialogMessagesByRandomIds.remove(object.messageOwner.random_id);
                         }
-                    }
-                    if (object != null && object.messageOwner.random_id != 0) {
-                        dialogMessagesByRandomIds.remove(object.messageOwner.random_id);
-                    }
-                    if (onlyHistory == 1 && !DialogObject.isEncryptedDialog(did) && lastMessageId > 0) {
-                        TLRPC.TL_messageService message = new TLRPC.TL_messageService();
-                        message.id = dialog.top_message;
-                        message.out = getUserConfig().getClientUserId() == did;
-                        message.from_id = new TLRPC.TL_peerUser();
-                        message.from_id.user_id = getUserConfig().getClientUserId();
-                        message.flags |= 256;
-                        message.action = new TLRPC.TL_messageActionHistoryClear();
-                        message.date = dialog.last_message_date;
-                        message.dialog_id = did;
-                        message.peer_id = getPeer(did);
-                        boolean isDialogCreated = createdDialogIds.contains(message.dialog_id);
-                        MessageObject obj = new MessageObject(currentAccount, message, isDialogCreated, isDialogCreated);
-                        ArrayList<MessageObject> objArr = new ArrayList<>();
-                        objArr.add(obj);
-                        ArrayList<TLRPC.Message> arr = new ArrayList<>();
-                        arr.add(message);
-                        updateInterfaceWithMessages(did, objArr, false);
-                        getMessagesStorage().putMessages(arr, false, true, false, 0, false);
-                    } else {
-                        dialog.top_message = 0;
+                        if (onlyHistory == 1 && !DialogObject.isEncryptedDialog(did) && lastMessageId > 0) {
+                            TLRPC.TL_messageService message = new TLRPC.TL_messageService();
+                            message.id = dialog.top_message;
+                            message.out = getUserConfig().getClientUserId() == did;
+                            message.from_id = new TLRPC.TL_peerUser();
+                            message.from_id.user_id = getUserConfig().getClientUserId();
+                            message.flags |= 256;
+                            message.action = new TLRPC.TL_messageActionHistoryClear();
+                            message.date = dialog.last_message_date;
+                            message.dialog_id = did;
+                            message.peer_id = getPeer(did);
+                            boolean isDialogCreated = createdDialogIds.contains(message.dialog_id);
+                            MessageObject obj = new MessageObject(currentAccount, message, isDialogCreated, isDialogCreated);
+                            ArrayList<MessageObject> objArr = new ArrayList<>();
+                            objArr.add(obj);
+                            ArrayList<TLRPC.Message> arr = new ArrayList<>();
+                            arr.add(message);
+                            updateInterfaceWithMessages(did, objArr, false);
+                            getMessagesStorage().putMessages(arr, false, true, false, 0, false);
+                        } else {
+                            dialog.top_message = 0;
+                        }
                     }
                 }
+            } else {
+                getMessagesStorage().deleteMessageHistoryForDaysRange(did, minDate, maxDate);
             }
             if (first == 2) {
                 Integer max = dialogs_read_inbox_max.get(did);
@@ -5008,10 +5011,14 @@ public class MessagesController extends BaseController implements NotificationCe
                     getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload, true);
                 } else {
                     getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
-                    getNotificationCenter().postNotificationName(NotificationCenter.removeAllMessagesFromDialog, did, false, null);
+                    if (minDate == 0 && maxDate == 0) {
+                        getNotificationCenter().postNotificationName(NotificationCenter.removeAllMessagesFromDialog, did, false, null);
+                    }
                 }
             }
-            getMessagesStorage().getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> getNotificationsController().removeNotificationsForDialog(did)));
+            if (minDate == 0 && maxDate == 0) {
+                getMessagesStorage().getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> getNotificationsController().removeNotificationsForDialog(did)));
+            }
         }
 
         if (onlyHistory == 3) {
@@ -5043,6 +5050,8 @@ public class MessagesController extends BaseController implements NotificationCe
                         data.writeInt32(onlyHistory);
                         data.writeInt32(max_id_delete);
                         data.writeBool(revoke);
+                        data.writeInt32(minDate);
+                        data.writeInt32(maxDate);
                         peer.serializeToStream(data);
                     } catch (Exception e) {
                         FileLog.e(e);
@@ -5075,15 +5084,17 @@ public class MessagesController extends BaseController implements NotificationCe
             } else {
                 TLRPC.TL_messages_deleteHistory req = new TLRPC.TL_messages_deleteHistory();
                 req.peer = peer;
-                if (minDate == 0 && maxDate == 0) {
-                    req.max_id = 0;
-                } else {
-                    req.max_id = max_id_delete > 0 ? max_id_delete : Integer.MAX_VALUE;
-                }
+                req.max_id = max_id_delete > 0 ? max_id_delete : Integer.MAX_VALUE;
                 req.just_clear = onlyHistory != 0;
                 req.revoke = revoke;
-                req.min_date = minDate;
-                req.max_date = maxDate;
+                if(minDate > 0){
+                    req.min_date = minDate;
+                    req.flags |= (1<<2);
+                }
+                if( maxDate > 0){
+                    req.max_date = maxDate;
+                    req.flags |= (1<<3);
+                }
                 int max_id_delete_final = max_id_delete;
                 TLRPC.InputPeer peerFinal = peer;
                 getConnectionsManager().sendRequest(req, (response, error) -> {

@@ -33,6 +33,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -98,6 +99,7 @@ public class MediaCalendarActivity extends BaseFragment {
     private FrameLayout bottomOverlay;
     private Paint bottomButtonBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private PreviewDialog previewDialog;
+    private View blurView;
 
     int startFromYear;
     int startFromMonth;
@@ -120,6 +122,7 @@ public class MediaCalendarActivity extends BaseFragment {
     private int endDate = 0;
     private int selectedDay = 0;
     private int selectedDays = 0;
+    private boolean isJumpToDaySelected;
 
     public MediaCalendarActivity(Bundle args, int photosVideosTypeFilter, int selectedDate, boolean isFromChat) {
         super(args);
@@ -159,11 +162,17 @@ public class MediaCalendarActivity extends BaseFragment {
 
         selectDayPaint.setStrokeWidth(8);
 
+        FrameLayout mainContent = new FrameLayout(context);
         contentView = new FrameLayout(context);
+        LinearLayout actionBarLayout = new LinearLayout(context);
+        actionBarLayout.setOrientation(LinearLayout.VERTICAL);
+        mainContent.addView(actionBarLayout);
         createActionBar(context);
-        contentView.addView(actionBar);
+        actionBarLayout.addView(actionBar);
+        actionBarLayout.addView(contentView);
         actionBar.setTitle(LocaleController.getString("Calendar", R.string.Calendar));
         actionBar.setCastShadows(false);
+        actionBar.setAddToContainer(false);
 
         listView = new RecyclerListView(context) {
             @Override
@@ -266,7 +275,7 @@ public class MediaCalendarActivity extends BaseFragment {
             }
         });
 
-        fragmentView = contentView;
+        fragmentView = mainContent;
 
         Calendar calendar = Calendar.getInstance();
         startFromYear = calendar.get(Calendar.YEAR);
@@ -296,8 +305,22 @@ public class MediaCalendarActivity extends BaseFragment {
         loadNext();
         updateColors();
         activeTextPaint.setColor(Color.WHITE);
+        actionBar.setAllowOverlayTitle(true);
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setBackButtonDrawable((new BackDrawable(false)));
+
+        blurView = new View(context) {
+            @Override
+            public void setAlpha(float alpha) {
+                super.setAlpha(alpha);
+                if (fragmentView != null) {
+                    fragmentView.invalidate();
+                }
+            }
+        };
+        blurView.setVisibility(View.GONE);
+        mainContent.addView(blurView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
         return fragmentView;
     }
 
@@ -328,9 +351,9 @@ public class MediaCalendarActivity extends BaseFragment {
         frameLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 0));
         builder.setPositiveButton(LocaleController.getString("Delete", R.string.Delete), (dialogInterface, i) -> {
             if (isSingleDay) {
-                MessagesController.getInstance(currentAccount).deleteMessageHistoryForDaysRange(dialogId, selectedDay, selectedDay + 86400);
+                MessagesController.getInstance(currentAccount).deleteMessageHistoryForDaysRange(dialogId, selectedDay, selectedDay + 86400, deleteForAll[0]);
             } else {
-                MessagesController.getInstance(currentAccount).deleteMessageHistoryForDaysRange(dialogId, startDate, endDate);
+                MessagesController.getInstance(currentAccount).deleteMessageHistoryForDaysRange(dialogId, startDate, endDate, deleteForAll[0]);
             }
             setOriginMode();
         });
@@ -577,6 +600,7 @@ public class MediaCalendarActivity extends BaseFragment {
 
                 @Override
                 public boolean onDown(MotionEvent e) {
+                    //somehow always onLongClick
                     return true;
                 }
 
@@ -979,12 +1003,7 @@ public class MediaCalendarActivity extends BaseFragment {
     }
 
     public void jumpToDate(int date) {
-        Bundle args = new Bundle();
-        args.putInt("jump_to_date", date);
-        args.putLong("user_id", dialogId);
-        ChatActivity chatActivity = new ChatActivity(args);
-        presentFragment(chatActivity);
-        removeSelfFromStack();
+        hidePreview();
     }
 
     public void clearHistory() {
@@ -1005,12 +1024,14 @@ public class MediaCalendarActivity extends BaseFragment {
         private final Drawable pagerShadowDrawable = getContext().getResources().getDrawable(R.drawable.popup_fixed_alert2).mutate();
         private final TextView dateText = new TextView(getContext());
         private final TextView messagesCountText = new TextView(getContext());
+        private final LinearLayout headerBackground;
         private final ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout;
 
         private ValueAnimator animator;
-        private BitmapDrawable backgroundDrawable;
         private float animationProgress;
         private final FrameLayout mFrameLayout;
+        private final FrameLayout.LayoutParams mLp;
+        private final View chatActivityView;
 
         public PreviewDialog(@NonNull Context context, @NonNull Theme.ResourcesProvider resourcesProvider) {
             super(context, R.style.TransparentDialog2);
@@ -1019,25 +1040,14 @@ public class MediaCalendarActivity extends BaseFragment {
             contentView.setVisibility(INVISIBLE);
 
             int backgroundColor = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, getResourceProvider());
-            pagerShadowDrawable.setColorFilter(new PorterDuffColorFilter(backgroundColor, PorterDuff.Mode.MULTIPLY));
+            pagerShadowDrawable.setColorFilter(new PorterDuffColorFilter(Color.TRANSPARENT, PorterDuff.Mode.MULTIPLY));
             pagerShadowDrawable.setCallback(contentView);
             android.graphics.Rect paddingRect = new android.graphics.Rect();
             pagerShadowDrawable.getPadding(paddingRect);
             shadowPaddingTop = paddingRect.top;
             shadowPaddingLeft = paddingRect.left;
 
-            dateText.setMaxLines(1);
-            dateText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, getResourceProvider()));
-            dateText.setTextSize(16);
-            dateText.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
-            dateText.setText(LocaleController.formatDateChat(selectedDay, true));
-            contentView.addView(dateText);
-
-            popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context, resourcesProvider);
-            popupLayout.setBackgroundColor(backgroundColor);
-            contentView.addView(popupLayout);
-
-            mFrameLayout = new FrameLayout(getParentActivity()){
+            headerBackground = new LinearLayout(getParentActivity()) {
 
                 private final Path path = new Path();
 
@@ -1050,26 +1060,41 @@ public class MediaCalendarActivity extends BaseFragment {
                 @Override
                 public void draw(Canvas canvas) {
                     int count = canvas.save();
-                    path.addRoundRect(new RectF(0, -AndroidUtilities.dp(6), getWidth(), getHeight()), AndroidUtilities.dp(6), AndroidUtilities.dp(6), Path.Direction.CW);
+                    path.addRoundRect(new RectF(0, AndroidUtilities.dp(6), getWidth(), getHeight() + AndroidUtilities.dp(6)), AndroidUtilities.dp(6), AndroidUtilities.dp(6), Path.Direction.CW);
                     canvas.clipPath(path);
                     super.draw(canvas);
                     canvas.restoreToCount(count);
                 }
             };
-            mFrameLayout.setBackgroundColor(Color.RED);
-            contentView.addView(mFrameLayout);
+            headerBackground.setOrientation(LinearLayout.VERTICAL);
+            headerBackground.setBackgroundColor(Theme.getColor(Theme.key_actionBarDefault, getResourceProvider()));
+            dateText.setMaxLines(1);
+            dateText.setTextColor(Theme.getColor(Theme.key_actionBarDefaultTitle, getResourceProvider()));
+            dateText.setTextSize(16);
+            dateText.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            dateText.setText(LocaleController.formatDateChat(selectedDay, true));
+            headerBackground.addView(dateText);
+            LinearLayout.LayoutParams dateLP = (LinearLayout.LayoutParams) dateText.getLayoutParams();
+            dateLP.topMargin = AndroidUtilities.dp(12);
+            dateLP.leftMargin = AndroidUtilities.dp(12);
 
-            messagesCountText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, getResourceProvider()));
+            messagesCountText.setTextColor(Theme.getColor(Theme.key_actionBarDefaultSubtitle, getResourceProvider()));
             messagesCountText.setTextSize(14);
-            contentView.addView(messagesCountText);
+            headerBackground.addView(messagesCountText);
+            LinearLayout.LayoutParams messagesCountLP = (LinearLayout.LayoutParams) messagesCountText.getLayoutParams();
+            messagesCountLP.topMargin = AndroidUtilities.dp(4);
+            messagesCountLP.leftMargin = AndroidUtilities.dp(12);
+
+            popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context, resourcesProvider);
+            popupLayout.setBackgroundColor(backgroundColor);
 
             ActionBarMenuSubItem jumpToDateCell = new ActionBarMenuSubItem(context, true, false);
             jumpToDateCell.setColors(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon, resourcesProvider));
             jumpToDateCell.setSelectorColor(Theme.getColor(Theme.key_dialogButtonSelector, resourcesProvider));
             jumpToDateCell.setTextAndIcon(LocaleController.getString("JumpToDate", R.string.JumpToDate), R.drawable.msg_message);
             jumpToDateCell.setOnClickListener((v) -> {
+                isJumpToDaySelected = true;
                 jumpToDate(selectedDay);
-                hidePreview();
             });
             popupLayout.addView(jumpToDateCell);
 
@@ -1092,11 +1117,38 @@ public class MediaCalendarActivity extends BaseFragment {
             });
             popupLayout.addView(clearHistory);
 
+            mFrameLayout = new FrameLayout(getParentActivity()) {
+
+                private final Path path = new Path();
+
+                @Override
+                protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                    super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
+                            MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(heightMeasureSpec), MeasureSpec.EXACTLY));
+                }
+
+                @Override
+                public void draw(Canvas canvas) {
+                    int count = canvas.save();
+                    path.addRoundRect(new RectF(0, -AndroidUtilities.dp(6), getWidth(), getHeight()), AndroidUtilities.dp(6), AndroidUtilities.dp(6), Path.Direction.CW);
+                    canvas.clipPath(path);
+                    super.draw(canvas);
+                    canvas.restoreToCount(count);
+                }
+            };
+
             Bundle args = new Bundle();
-            args.putLong("chat_id", -dialogId);
-            //ChatActivity chatActivity = new ChatActivity(args);
-            //getFragmentAsPreviewFromCalendar(chatActivity);
-            //contentView.addView(fragmentView);
+            args.putLong("user_id", dialogId);
+            args.putInt("jump_to_date", selectedDay);
+            ChatActivity chatActivity = new ChatActivity(args);
+            presentFragmentAsPreview(chatActivity);
+            chatActivityView = chatActivity.getFragmentView();
+            mLp = (FrameLayout.LayoutParams) chatActivityView.getLayoutParams();
+            parentLayout.drawPreviewFromCalendar(false);
+            contentView.addView(popupLayout);
+            parentLayout.addView(mFrameLayout);
+            contentView.addView(headerBackground);
+            mFrameLayout.setAlpha(0);
         }
 
         @Override
@@ -1126,13 +1178,14 @@ public class MediaCalendarActivity extends BaseFragment {
         public void show() {
             super.show();
             AndroidUtilities.runOnUIThread(() -> {
-                updateBackgroundBitmap();
+                prepareBlurBitmap();
                 runAnimation(true);
             }, 80);
         }
 
         @Override
         public void dismiss() {
+            finishPreviewFragment();
             runAnimation(false);
         }
 
@@ -1161,12 +1214,11 @@ public class MediaCalendarActivity extends BaseFragment {
                 pagerShadowDrawable.setAlpha((int)(255 * alpha));
                 dateText.setAlpha(alpha);
                 messagesCountText.setAlpha(alpha);
-                mFrameLayout.setAlpha(alpha);
+                chatActivityView.setAlpha((int)(255 * alpha));
+                headerBackground.setAlpha(alpha);
+                blurView.setAlpha((int)(255 * alpha));
                 popupLayout.setTranslationY(popupLayoutTranslation * (1f - animationProgress));
                 popupLayout.setAlpha(alpha);
-                if (backgroundDrawable != null) {
-                    backgroundDrawable.setAlpha((int)(255 * animationProgress));
-                }
             });
             animator.addListener(new AnimatorListenerAdapter() {
                 @Override
@@ -1174,6 +1226,9 @@ public class MediaCalendarActivity extends BaseFragment {
                     super.onAnimationStart(animation);
                     contentView.setVisibility(VISIBLE);
                     if (show) {
+                        parentLayout.drawPreviewFromCalendar(true);
+                        parentLayout.removeView(mFrameLayout);
+                        blurView.setVisibility(VISIBLE);
                         contentView.setScaleX(fromScale);
                         contentView.setScaleY(fromScale);
                     }
@@ -1182,7 +1237,16 @@ public class MediaCalendarActivity extends BaseFragment {
                 public void onAnimationEnd(Animator animation) {
                     super.onAnimationEnd(animation);
                     if (!show) {
+                        blurView.setVisibility(View.GONE);
+                        blurView.setBackground(null);
                         PreviewDialog.super.dismiss();
+                        if (isJumpToDaySelected) {
+                            Bundle args = new Bundle();
+                            args.putInt("jump_to_date", selectedDay);
+                            args.putLong("user_id", dialogId);
+                            ChatActivity chatActivity = new ChatActivity(args);
+                            presentFragment(chatActivity, true);
+                        }
                     }
                 }
             });
@@ -1191,34 +1255,19 @@ public class MediaCalendarActivity extends BaseFragment {
             animator.start();
         }
 
-        private Bitmap getBlurredBitmap() {
-            float factor = 6.0f;
-            int width = (int) ((contentView.getMeasuredWidth()) / factor);
-            int height = (int) ((contentView.getMeasuredHeight()) / factor);
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        private void prepareBlurBitmap() {
+            if (blurView == null) {
+                return;
+            }
+            int w = (int) (fragmentView.getMeasuredWidth() / 6.0f);
+            int h = (int) (fragmentView.getMeasuredHeight() / 6.0f);
+            Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
-            canvas.scale(1f / factor, 1f / factor);
-
-            canvas.save();
-            ((LaunchActivity) getParentActivity()).getActionBarLayout().draw(canvas);
-            canvas.drawColor(ColorUtils.setAlphaComponent(Color.BLACK, (int) (255 * 0.3f)));
-            Dialog dialog = getVisibleDialog();
-            if (dialog != null) {
-                dialog.getWindow().getDecorView().draw(canvas);
-            }
-            Utilities.stackBlurBitmap(bitmap, Math.max(7, Math.max(width, height) / 180));
-
-            return bitmap;
-        }
-
-        private void updateBackgroundBitmap() {
-            int oldAlpha = 255;
-            if (backgroundDrawable != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                oldAlpha = backgroundDrawable.getAlpha();
-            }
-            backgroundDrawable = new BitmapDrawable(getContext().getResources(), getBlurredBitmap());
-            backgroundDrawable.setAlpha(oldAlpha);
-            getWindow().setBackgroundDrawable(backgroundDrawable);
+            canvas.scale(1.0f / 6.0f, 1.0f / 6.0f);
+            fragmentView.draw(canvas);
+            Utilities.stackBlurBitmap(bitmap, Math.max(7, Math.max(w, h) / 180));
+            blurView.setBackground(new BitmapDrawable(bitmap));
+            blurView.setVisibility(View.VISIBLE);
         }
 
         private int getContentHeight() {
@@ -1296,9 +1345,10 @@ public class MediaCalendarActivity extends BaseFragment {
                 int sizeWidth = Math.min(minSize, (int)(getMeasuredHeight() * 0.66)) - AndroidUtilities.dp(12) * 2;
                 int specWidth = MeasureSpec.makeMeasureSpec(sizeWidth, MeasureSpec.AT_MOST);
                 mFrameLayout.measure(specWidth, specHeight);
+                headerBackground.measure(specWidth, specHeight);
                 int textWidthSpec = MeasureSpec.makeMeasureSpec(sizeWidth - AndroidUtilities.dp(16) * 2, MeasureSpec.EXACTLY);
-                dateText.measure(textWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-                messagesCountText.measure(textWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+                //dateText.measure(textWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+                //messagesCountText.measure(textWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
                 popupLayout.measure(View.MeasureSpec.makeMeasureSpec(mFrameLayout.getMeasuredWidth() + shadowPaddingLeft * 2, MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             }
 
@@ -1306,9 +1356,10 @@ public class MediaCalendarActivity extends BaseFragment {
             protected void onLayout(boolean changed, int l, int t, int r, int b) {
                 int top = (getHeight() - getContentHeight()) / 2;
                 int left = (getWidth() - mFrameLayout.getMeasuredWidth()) / 2;
-                dateText.layout(left + AndroidUtilities.dp(12), top, left + dateText.getMeasuredWidth(), top + dateText.getMeasuredHeight());
+                //dateText.layout(left + AndroidUtilities.dp(12), top, left + dateText.getMeasuredWidth(), top + dateText.getMeasuredHeight());
+                headerBackground.layout(left, top - AndroidUtilities.dp(16), left + headerBackground.getMeasuredWidth(), top + dateText.getMeasuredHeight() + messagesCountText.getMeasuredHeight() + AndroidUtilities.dp(12));
                 top += dateText.getMeasuredHeight();
-                messagesCountText.layout(dateText.getLeft(), top, dateText.getRight() - AndroidUtilities.dp(16), top + messagesCountText.getMeasuredHeight());
+                //messagesCountText.layout(dateText.getLeft(), top, dateText.getRight() - AndroidUtilities.dp(16), top + messagesCountText.getMeasuredHeight());
                 top += messagesCountText.getMeasuredHeight();
                 top += AndroidUtilities.dp(12);
                 mFrameLayout.layout(left, top, left + mFrameLayout.getMeasuredWidth(), top + mFrameLayout.getMeasuredHeight());
@@ -1329,6 +1380,11 @@ public class MediaCalendarActivity extends BaseFragment {
                 clipPath.addRoundRect(rectF, radius, radius, Path.Direction.CW);
                 rectF.set(l, pagerShadowDrawable.getBounds().top + radius, r, b);
                 clipPath.addRect(rectF, Path.Direction.CW);
+
+                mLp.topMargin = dateText.getMeasuredHeight() + messagesCountText.getMeasuredHeight();
+                mLp.width = mFrameLayout.getWidth();
+                mLp.leftMargin = mFrameLayout.getLeft();
+                mLp.height = top - dateText.getMeasuredHeight() - messagesCountText.getMeasuredHeight();
             }
 
             @Override
@@ -1340,7 +1396,7 @@ public class MediaCalendarActivity extends BaseFragment {
                 }
                 if (w != oldw && h != oldh) {
                     if (!firstSizeChange) {
-                        updateBackgroundBitmap();
+                        prepareBlurBitmap();
                     }
                     firstSizeChange = false;
                 }
@@ -1369,14 +1425,5 @@ public class MediaCalendarActivity extends BaseFragment {
 
     private void hidePreview() {
         previewDialog.dismiss();
-    }
-
-    public interface OnClickListener {
-
-        void jumpToDate(int date);
-
-        void selectThisDay(int date);
-
-        void clearHistory(int date);
     }
 }
