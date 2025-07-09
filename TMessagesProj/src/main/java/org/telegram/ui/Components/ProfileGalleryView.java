@@ -265,7 +265,7 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
         imagesLayerNum = value;
     }
 
-    public ProfileGalleryView(Context context, long dialogId, ActionBar parentActionBar, RecyclerListView parentListView, ProfileActivity.AvatarImageView parentAvatarImageView, int parentClassGuid, Callback callback) {
+    public ProfileGalleryView(Context context, long dialogId, ActionBar parentActionBar, RecyclerListView parentListView, ProfileAvatarImageView parentAvatarImageView, int parentClassGuid, Callback callback) {
         super(context);
         setVisibility(View.GONE);
         setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -628,12 +628,16 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
         return !imagesLocations.isEmpty();
     }
 
-    public BackupImageView getCurrentItemView() {
-        if (adapter != null && !adapter.objects.isEmpty()) {
-            return adapter.objects.get(getCurrentItem()).imageView;
+    public BackupImageView getItemView(int index) {
+        if (adapter != null && !adapter.objects.isEmpty() && index >= 0 && index < adapter.objects.size()) {
+            return adapter.objects.get(index).imageView;
         } else {
             return null;
         }
+    }
+
+    public BackupImageView getCurrentItemView() {
+        return getItemView(getCurrentItem());
     }
 
     public boolean isLoadingCurrentVideo() {
@@ -1090,7 +1094,7 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
         private BackupImageView parentAvatarImageView;
         private final ActionBar parentActionBar;
 
-        public ViewPagerAdapter(Context context, ProfileActivity.AvatarImageView parentAvatarImageView, ActionBar parentActionBar) {
+        public ViewPagerAdapter(Context context, ProfileAvatarImageView parentAvatarImageView, ActionBar parentActionBar) {
             this.context = context;
             this.parentAvatarImageView = parentAvatarImageView;
             this.parentActionBar = parentActionBar;
@@ -1371,14 +1375,20 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
         private float radialProgressHideAnimatorStartValue;
         private long firstDrawTime = -1;
         public boolean isVideo;
-        private final int position;
-        private final Paint placeholderPaint;
+        private int position;
+        private Paint placeholderPaint;
+
+        private HeaderTransitionEffect blurHelper;
 
         public AvatarImageView(Context context, int position, Paint placeholderPaint) {
             super(context);
             this.position = position;
             this.placeholderPaint = placeholderPaint;
             setLayerNum(imagesLayerNum);
+            drawFromStart = true;
+            blurHelper = new HeaderTransitionEffect(this);
+            blurHelper.updateTransitionState(1f);
+            blurHelper.setBlurActive(true);
         }
 
         @Override
@@ -1389,89 +1399,107 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
                 int paddingBottom = AndroidUtilities.dp2(80f);
                 radialProgress.setProgressRect((w - radialProgressSize) / 2, paddingTop + (h - paddingTop - paddingBottom - radialProgressSize) / 2, (w + radialProgressSize) / 2, paddingTop + (h - paddingTop - paddingBottom + radialProgressSize) / 2);
             }
+            blurHelper.updateDimensions(w,h);
+        }
+
+        @Override
+        public void onNewImageSet() {
+            super.onNewImageSet();
+            blurHelper.resetContent();
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
+            int w = getWidth(), h = getHeight() - AndroidUtilities.dp(ProfileActivity.PROFILE_ACTIONS_HEIGHT + ProfileActivity.BUTTONS_SPACING * 2);
+            setSize(w, h);
             if (pinchToZoomHelper != null && pinchToZoomHelper.isInOverlayMode()) {
                 return;
             }
-            if (radialProgress != null) {
-                int realPosition = getRealPosition(position);
-                if (hasActiveVideo) {
-                    realPosition--;
-                }
-                final Drawable drawable = getImageReceiver().getDrawable();
-                boolean hideProgress;
-                if (realPosition < imagesUploadProgress.size() && imagesUploadProgress.get(realPosition) != null) {
-                    hideProgress = imagesUploadProgress.get(realPosition) >= 1f;
-                } else {
-                    hideProgress = drawable != null && (!isVideo || (drawable instanceof AnimatedFileDrawable && ((AnimatedFileDrawable) drawable).getDurationMs() > 0));
-                }
-                if (hideProgress) {
-                    if (radialProgressHideAnimator == null) {
-                        long startDelay = 0;
-                        if (radialProgress.getProgress() < 1f) {
-                            radialProgress.setProgress(1f, true);
-                            startDelay = 100;
-                        }
-                        radialProgressHideAnimatorStartValue = radialProgress.getOverrideAlpha();
-                        radialProgressHideAnimator = ValueAnimator.ofFloat(0f, 1f);
-                        radialProgressHideAnimator.setStartDelay(startDelay);
-                        radialProgressHideAnimator.setDuration((long) (radialProgressHideAnimatorStartValue * 250f));
-                        radialProgressHideAnimator.setInterpolator(CubicBezierInterpolator.DEFAULT);
-                        radialProgressHideAnimator.addUpdateListener(anim -> radialProgress.setOverrideAlpha(AndroidUtilities.lerp(radialProgressHideAnimatorStartValue, 0f, anim.getAnimatedFraction())));
-                        int finalRealPosition = realPosition;
-                        radialProgressHideAnimator.addListener(new AnimatorListenerAdapter() {
-                            @Override
-                            public void onAnimationEnd(Animator animation) {
-                                radialProgress = null;
-                                radialProgresses.delete(finalRealPosition);
-                            }
-                        });
-                        radialProgressHideAnimator.start();
+            blurHelper.renderContent(canvas, c -> {
+                if (radialProgress != null) {
+                    int realPosition = getRealPosition(position);
+                    if (hasActiveVideo) {
+                        realPosition--;
                     }
-                } else {
-                    if (firstDrawTime < 0) {
-                        firstDrawTime = System.currentTimeMillis();
+                    final Drawable drawable = getImageReceiver().getDrawable();
+                    boolean hideProgress;
+                    if (realPosition < imagesUploadProgress.size() && imagesUploadProgress.get(realPosition) != null) {
+                        hideProgress = imagesUploadProgress.get(realPosition) >= 1f;
                     } else {
-                        final long elapsedTime = System.currentTimeMillis() - firstDrawTime;
-                        final long startDelay = isVideo ? 250 : 750;
-                        final long duration = 250;
-                        if (elapsedTime <= startDelay + duration) {
-                            if (elapsedTime > startDelay) {
-                                radialProgress.setOverrideAlpha(CubicBezierInterpolator.DEFAULT.getInterpolation((elapsedTime - startDelay) / (float) duration));
+                        hideProgress = drawable != null && (!isVideo || (drawable instanceof AnimatedFileDrawable && ((AnimatedFileDrawable) drawable).getDurationMs() > 0));
+                    }
+                    if (hideProgress) {
+                        if (radialProgressHideAnimator == null) {
+                            long startDelay = 0;
+                            if (radialProgress.getProgress() < 1f) {
+                                radialProgress.setProgress(1f, true);
+                                startDelay = 100;
+                            }
+                            radialProgressHideAnimatorStartValue = radialProgress.getOverrideAlpha();
+                            radialProgressHideAnimator = ValueAnimator.ofFloat(0f, 1f);
+                            radialProgressHideAnimator.setStartDelay(startDelay);
+                            radialProgressHideAnimator.setDuration((long) (radialProgressHideAnimatorStartValue * 250f));
+                            radialProgressHideAnimator.setInterpolator(CubicBezierInterpolator.DEFAULT);
+                            radialProgressHideAnimator.addUpdateListener(anim -> radialProgress.setOverrideAlpha(AndroidUtilities.lerp(radialProgressHideAnimatorStartValue, 0f, anim.getAnimatedFraction())));
+                            int finalRealPosition = realPosition;
+                            radialProgressHideAnimator.addListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    radialProgress = null;
+                                    radialProgresses.delete(finalRealPosition);
+                                }
+                            });
+                            radialProgressHideAnimator.start();
+                        }
+                    } else {
+                        if (firstDrawTime < 0) {
+                            firstDrawTime = System.currentTimeMillis();
+                        } else {
+                            final long elapsedTime = System.currentTimeMillis() - firstDrawTime;
+                            final long startDelay = isVideo ? 250 : 750;
+                            final long duration = 250;
+                            if (elapsedTime <= startDelay + duration) {
+                                if (elapsedTime > startDelay) {
+                                    radialProgress.setOverrideAlpha(CubicBezierInterpolator.DEFAULT.getInterpolation((elapsedTime - startDelay) / (float) duration));
+                                }
                             }
                         }
-                    }
-                    if (invalidateWithParent) {
+                        if (invalidateWithParent) {
+                            invalidate();
+                        } else {
+                            postInvalidateOnAnimation();
+                        }
                         invalidate();
+                    }
+                    if (roundTopRadius == 0 && roundBottomRadius == 0) {
+                        c.drawRect(0, 0, getWidth(), getHeight(), placeholderPaint);
+                    } else if (roundTopRadius == roundBottomRadius) {
+                        rect.set(0, 0, getWidth(), getHeight());
+                        c.drawRoundRect(rect, roundTopRadius, roundTopRadius, placeholderPaint);
                     } else {
-                        postInvalidateOnAnimation();
+                        path.reset();
+                        rect.set(0, 0, getWidth(), getHeight());
+                        for (int i = 0; i < 4; i++) {
+                            radii[i] = roundTopRadius;
+                            radii[4 + i] = roundBottomRadius;
+                        }
+                        path.addRoundRect(rect, radii, Path.Direction.CW);
+                        c.drawPath(path, placeholderPaint);
                     }
-                    invalidate();
                 }
-                if (roundTopRadius == 0 && roundBottomRadius == 0) {
-                    canvas.drawRect(0, 0, getWidth(), getHeight(), placeholderPaint);
-                } else if (roundTopRadius == roundBottomRadius) {
-                    rect.set(0, 0, getWidth(), getHeight());
-                    canvas.drawRoundRect(rect, roundTopRadius, roundTopRadius, placeholderPaint);
-                } else {
-                    path.reset();
-                    rect.set(0, 0, getWidth(), getHeight());
-                    for (int i = 0; i < 4; i++) {
-                        radii[i] = roundTopRadius;
-                        radii[4 + i] = roundBottomRadius;
-                    }
-                    path.addRoundRect(rect, radii, Path.Direction.CW);
-                    canvas.drawPath(path, placeholderPaint);
-                }
-            }
-            super.onDraw(canvas);
+                super.onDraw(c);
 
-            if (radialProgress != null && radialProgress.getOverrideAlpha() > 0f) {
-                radialProgress.draw(canvas);
-            }
+                if (radialProgress != null && radialProgress.getOverrideAlpha() > 0f) {
+                    radialProgress.draw(c);
+                }
+                return null;
+                });
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            blurHelper.releaseResources();
         }
 
         @Override

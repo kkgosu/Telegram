@@ -32,7 +32,6 @@ import com.google.zxing.common.detector.MathUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
-import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
@@ -47,8 +46,8 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedFloat;
 import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
+import org.telegram.ui.Components.ProfileAvatarImageView;
 import org.telegram.ui.Components.RadialProgress;
-import org.telegram.ui.ProfileActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,7 +66,7 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
     private final long dialogId;
     private final boolean isTopic;
     private final View avatarContainer;
-    private final ProfileActivity.AvatarImageView avatarImage;
+    private final ProfileAvatarImageView avatarImage;
 
     private final AnimatedTextView.AnimatedTextDrawable titleDrawable = new AnimatedTextView.AnimatedTextDrawable(false, true, true);
 
@@ -142,7 +141,7 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
 
     StoriesController storiesController;
 
-    public ProfileStoriesView(Context context, int currentAccount, long dialogId, boolean isTopic, @NonNull View avatarContainer, ProfileActivity.AvatarImageView avatarImage, Theme.ResourcesProvider resourcesProvider) {
+    public ProfileStoriesView(Context context, int currentAccount, long dialogId, boolean isTopic, @NonNull View avatarContainer, ProfileAvatarImageView avatarImage, Theme.ResourcesProvider resourcesProvider) {
         super(context);
 
         this.currentAccount = currentAccount;
@@ -1019,7 +1018,7 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.storiesUpdated);
     }
 
-    private final StoryViewer.PlaceProvider provider = new StoryViewer.PlaceProvider() {
+    public final StoryViewer.PlaceProvider provider = new StoryViewer.PlaceProvider() {
         @Override
         public boolean findView(long dialogId, int messageId, int storyId, int type, StoryViewer.TransitionViewHolder holder) {
             holder.avatarImage = null;
@@ -1033,6 +1032,7 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
                 holder.clipParent = (View) getParent();
                 holder.radialProgressUpload = radialProgress;
                 holder.checkParentScale = true;
+                holder.radius = avatarImage.getRadius();
                 return true;
             }
 

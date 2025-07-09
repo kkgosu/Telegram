@@ -19,13 +19,13 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -47,6 +47,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -578,7 +581,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
                 actionBarHeight = ActionBar.getCurrentActionBarHeight() + AndroidUtilities.statusBarHeight;
                 ((MarginLayoutParams) listView.getLayoutParams()).topMargin = actionBarHeight;
             } else {
-                actionBarHeight = dp(144) + AndroidUtilities.statusBarHeight;
+                actionBarHeight = dp(ProfileActivity.MAX_HEIGHT) + ActionBar.getCurrentActionBarHeight() / 2 + AndroidUtilities.statusBarHeight;
                 ((MarginLayoutParams) listView.getLayoutParams()).topMargin = actionBarHeight;
                 ((MarginLayoutParams) profilePreview.getLayoutParams()).height = actionBarHeight;
             }
@@ -1174,7 +1177,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         };
         frameLayout.setFitsSystemWindows(true);
 
-        colorBar = new ColoredActionBar(context, resourceProvider) {
+        colorBar = new ColoredActionBar(context, resourceProvider, currentAccount, dialogId) {
             @Override
             protected void onUpdateColor() {
                 updateLightStatusBar();
@@ -2367,11 +2370,18 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         private int defaultColor;
         private final Theme.ResourcesProvider resourcesProvider;
 
-        public ColoredActionBar(Context context, Theme.ResourcesProvider resourcesProvider) {
+        private final int currentAccountId;
+        private final long dialogId;
+        private final boolean isChannel;
+
+        public ColoredActionBar(Context context, Theme.ResourcesProvider resourcesProvider, int currentAccountId, long dialogId) {
             super(context);
             this.resourcesProvider = resourcesProvider;
             defaultColor = Theme.getColor(Theme.key_actionBarDefault, resourcesProvider);
             setColor(-1, -1, false);
+            this.currentAccountId = currentAccountId;
+            this.dialogId = dialogId;
+            isChannel = dialogId < 0;
         }
 
         public void setColor(int currentAccount, int colorId, boolean animated) {
@@ -2420,7 +2430,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         private final AnimatedColor color2Animated = new AnimatedColor(this, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
 
         private int backgroundGradientColor1, backgroundGradientColor2, backgroundGradientHeight;
-        private LinearGradient backgroundGradient;
+        private Shader backgroundShader;
         private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         protected void onUpdateColor() {
@@ -2431,9 +2441,21 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         protected void dispatchDraw(Canvas canvas) {
             final int color1 = color1Animated.set(this.color1);
             final int color2 = color2Animated.set(this.color2);
-            if (backgroundGradient == null || backgroundGradientColor1 != color1 || backgroundGradientColor2 != color2 || backgroundGradientHeight != getHeight()) {
-                backgroundGradient = new LinearGradient(0, 0, 0, backgroundGradientHeight = getHeight(), new int[] { backgroundGradientColor2 = color2, backgroundGradientColor1 = color1 }, new float[] { 0, 1 }, Shader.TileMode.CLAMP);
-                backgroundPaint.setShader(backgroundGradient);
+            if (backgroundShader == null || backgroundGradientColor1 != color1 || backgroundGradientColor2 != color2 || backgroundGradientHeight != getHeight()) {
+                float baseOffset = AndroidUtilities.dp(16) + AndroidUtilities.dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE) / 2f;
+                float actionBarHeight = ActionBar.getCurrentActionBarHeight();
+                boolean isRealChannel = isChannel && ChatObject.isChannelAndNotMegaGroup(-dialogId, currentAccountId);
+                float centerY = isRealChannel
+                        ? actionBarHeight / 2f + baseOffset
+                        : actionBarHeight + AndroidUtilities.statusBarHeight + baseOffset;
+
+                if (isChannel && !isRealChannel) {
+                    centerY  -= AndroidUtilities.statusBarHeight;
+                }
+
+                backgroundGradientHeight = getHeight();
+                backgroundShader = new RadialGradient(getWidth() / 2f, centerY , AndroidUtilities.dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE) * 2, new int[] { backgroundGradientColor2 = color2, backgroundGradientColor1 = color1 }, new float[] { 0, 1}, Shader.TileMode.CLAMP);
+                backgroundPaint.setShader(backgroundShader);
                 onUpdateColor();
             }
             if (progressToGradient < 1) {
@@ -2449,7 +2471,7 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            super.onMeasure(widthMeasureSpec, ignoreMeasure ? heightMeasureSpec : MeasureSpec.makeMeasureSpec(AndroidUtilities.statusBarHeight + dp(144), MeasureSpec.EXACTLY));
+            super.onMeasure(widthMeasureSpec, ignoreMeasure ? heightMeasureSpec : MeasureSpec.makeMeasureSpec(AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() / 2 + dp(ProfileActivity.MAX_HEIGHT), MeasureSpec.EXACTLY));
         }
 
         public void updateColors() {
@@ -2499,6 +2521,17 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emoji = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, false, dp(20), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_PREVIEW_STATIC);
         private final StoriesUtilities.StoryGradientTools storyGradient = new StoriesUtilities.StoryGradientTools(this, false);
 
+        private final FloatValueHolder emojiAnimationProgress = new FloatValueHolder(emoji.isNotEmpty());
+        private final SpringAnimation emojiSpringAnimation = new SpringAnimation(emojiAnimationProgress)
+                .setMinimumVisibleChange(0.002f)
+                .setSpring(new SpringForce(emojiAnimationProgress.getValue())
+                        .setStiffness(SpringForce.STIFFNESS_LOW)
+                        .setDampingRatio(SpringForce.DAMPING_RATIO_HIGH_BOUNCY))
+                .addUpdateListener((animation, value, velocity) -> invalidate())
+                .addEndListener((animation, canceled, value, velocity) -> {
+                    clearEmoji(value);
+                });
+
         private boolean isEmojiCollectible;
         private AnimatedFloat emojiCollectible = new AnimatedFloat(this, 320, CubicBezierInterpolator.EASE_OUT_QUINT);
 
@@ -2531,15 +2564,17 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
             titleView.setTextSize(20);
             titleView.setTypeface(AndroidUtilities.bold());
             titleView.setScrollNonFitText(true);
-            addView(titleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 97, 0, 16, 50.33f));
+            titleView.setGravity(Gravity.CENTER);
+            addView(titleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 16, 42));
 
             subtitleView = new SimpleTextView(context);
             subtitleView.setTextSize(14);
             subtitleView.setTextColor(0x80FFFFFF);
             subtitleView.setScrollNonFitText(true);
-            addView(subtitleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 97, 0, 16, 30.66f));
+            subtitleView.setGravity(Gravity.CENTER);
+            addView(subtitleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 16, 0, 16, 21));
 
-            imageReceiver.setRoundRadius(dp(54));
+            imageReceiver.setRoundRadius(dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE));
             long botVerificationId = 0, emojiStatusId = 0;
             CharSequence title;
             if (isChannel) {
@@ -2694,11 +2729,40 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
             invalidate();
         }
 
+        private void clearEmoji(float value) {
+            if (value == 0f) {
+                emoji.set((Drawable) null, false);
+            }
+        }
+
         public void setEmoji(long docId, boolean isCollectible, boolean animated) {
+            if (docId == 0 && !animated) {
+                emoji.set((Drawable) null, false);
+                startIfNeeded(animated);
+            }
+
+            if (docId != 0 && !animated) {
+                emoji.set(docId, false);
+                emojiAnimationProgress.setValue(1f);
+                startIfNeeded(animated);
+            }
+
+            SpringForce spring = emojiSpringAnimation.getSpring();
             if (docId == 0) {
-                emoji.set((Drawable) null, animated);
+                spring.setStiffness(45f);
+                spring.setFinalPosition(0);
             } else {
-                emoji.set(docId, animated);
+                emoji.set(docId, spring.getFinalPosition() == 1f);
+                spring.setStiffness(200f);
+                spring.setFinalPosition(1);
+            }
+
+            startIfNeeded(animated);
+
+            if (animated) {
+                if (!emojiSpringAnimation.isRunning()) {
+                    emojiSpringAnimation.start();
+                }
             }
             final boolean isDark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
             if (peerColor != null) {
@@ -2726,6 +2790,12 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
             invalidate();
         }
 
+        private void startIfNeeded(boolean animated) {
+            if (animated && !emojiSpringAnimation.isRunning()) {
+                emojiSpringAnimation.start();
+            }
+        }
+
         public void setStatusEmoji(long docId, boolean isCollectible, boolean animated) {
             statusEmoji.set(docId, animated);
             statusEmoji.setParticles(isCollectible, animated);
@@ -2740,24 +2810,37 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         private final RectF rectF = new RectF();
         @Override
         protected void dispatchDraw(Canvas canvas) {
-            rectF.set(dp(20.33f), getHeight() - dp(25.33f + 53.33f), dp(20.33f) + dp(53.33f), getHeight() - dp(25.33f));
-            imageReceiver.setRoundRadius(isForum ? dp(18) : dp(54));
+            float centerX = getWidth() / 2f;
+            float centerY;
+            if (isChannel && ChatObject.isChannelAndNotMegaGroup(-dialogId, currentAccount)) {
+                centerY = ActionBar.getCurrentActionBarHeight() / 2f + AndroidUtilities.dp(16) + AndroidUtilities.dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE) / 2f;
+            } else {
+                centerY = ActionBar.getCurrentActionBarHeight() + AndroidUtilities.statusBarHeight + AndroidUtilities.dp(16) + AndroidUtilities.dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE) / 2f;
+                if (isChannel) {
+                    centerY -= AndroidUtilities.statusBarHeight;
+                }
+            }
+            float avatarSize = AndroidUtilities.dp(ProfileActivity.AVATAR_DEFAULT_SIZE + ProfileActivity.AVATAR_EXPANDED_SIZE) - AndroidUtilities.dp(7f);
+
+            StarGiftPatterns.drawProfilePatternCentered(canvas, emoji, getWidth(), getWidth(), 1.0f, 0f, centerY, centerY, 1f - emojiAnimationProgress.getValue());
+
+            float avatarRadius = isForum ? (avatarSize - dp(20)) / 2f : avatarSize;
+            rectF.set(centerX - avatarSize / 2f, centerY - avatarSize / 2f, centerX + avatarSize / 2f, centerY + avatarSize / 2f);
+            imageReceiver.setRoundRadius((int) avatarRadius);
             imageReceiver.setImageCoords(rectF);
             imageReceiver.draw(canvas);
 
-            final float r = rectF.width() / 2f + dp(4);
-            final float rr = dp(isForum ? 22 : 58);
+            float ringRadius = rectF.width() / 2f + dp(3.5f);
+            AndroidUtilities.rectTmp.set(
+                    rectF.centerX() - ringRadius,
+                    rectF.centerY() - ringRadius,
+                    rectF.centerX() + ringRadius,
+                    rectF.centerY() + ringRadius);
             canvas.drawRoundRect(
-                rectF.centerX() - r,
-                rectF.centerY() - r,
-                rectF.centerX() + r,
-                rectF.centerY() + r,
-                rr, rr,
-                storyGradient.getPaint(rectF)
+                AndroidUtilities.rectTmp,
+                avatarRadius, avatarRadius,
+                storyGradient.getPaint(AndroidUtilities.rectTmp)
             );
-
-            final float patternFull = emojiCollectible.set(isEmojiCollectible);
-            StarGiftPatterns.drawProfilePattern(canvas, emoji, getWidth(), getHeight(), 1.0f, patternFull);
 
             super.dispatchDraw(canvas);
         }

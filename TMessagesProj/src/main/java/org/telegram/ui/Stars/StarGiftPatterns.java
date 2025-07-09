@@ -6,8 +6,10 @@ import static org.telegram.messenger.AndroidUtilities.dpf2;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 
+import androidx.core.math.MathUtils;
+
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 
 public class StarGiftPatterns {
 
@@ -145,6 +147,63 @@ public class StarGiftPatterns {
         13, -15, 18.66f, .37f,
         43.33f, 1, 18.66f, .3186f
     };
+
+    private static final float[] profileCentered = {
+        269.87f, 0.15f, +0.112f, 0.398f,
+        239.92f, -15.21f, +0.217f, 0.581f,
+        210.04f, -14.97f, 0.008f, 0.423f,
+        209.83f, 0.23f, -0.152f, 0.671f,
+        180.11f, -14.76f, 0.013f, 0.503f,
+        179.96f, -60.17f, -0.047f, 0.802f,
+        300.18f, +15.12f, +0.312f, 0.573f,
+        330.09f, +15.08f, -0.017f, 0.427f,
+        330.23f, 0.17f, -0.182f, 0.668f,
+        0.21f, +15.03f, +0.047f, 0.497f,
+        0.17f, +60.12f, -0.097f, 0.803f,
+        90.13f, 0.08f, -0.028f, 0.431f,
+        60.07f, +15.18f, 0.265f, 0.572f,
+        30.21f, +45.09f, -0.032f, 0.429f,
+        30.14f, +45.17f, -0.198f, 0.673f,
+        120.15f, -15.22f, 0.253f, 0.578f,
+        150.08f, -45.14f, -0.043f, 0.422f,
+        150.23f, -45.07f, -0.221f, 0.672f
+    };
+
+    public static void drawProfilePatternCentered(Canvas canvas, Drawable pattern, float width, float listWidth, float alpha, float expansionFactor, float baseCenterY, float avatarCy, float collapseProgress) {
+        if (alpha <= 0.0f) return;
+
+        final float centerX = width / 2f;
+        final float patternRadius = listWidth * 0.45f;
+        final int baseSize = AndroidUtilities.dp(24);
+        for (int i = 0; i < profileCentered.length; i+=4) {
+            final float startAngle = profileCentered[i];
+            final float angleChange = startAngle + profileCentered[i + 1];
+            final float positionBias = profileCentered[i + 2];
+            final float pathLength = profileCentered[i + 3];
+
+            final float topBottomFade = Math.max(1f - Math.min(Math.abs(90 - startAngle), 45f) / 45f, 1f - Math.min(Math.abs(270 - startAngle), 45f) / 45f);
+
+            final float startPoint = Math.max(0, (pathLength + positionBias) * 0.1f);
+            final float maxPoint = MathUtils.clamp(pathLength + positionBias, 0.1f, 1f) * 0.8f;
+            final float rawProgress = MathUtils.clamp(collapseProgress, startPoint, maxPoint) - startPoint;
+            float normalized = rawProgress / (maxPoint - startPoint);
+            normalized = CubicBezierInterpolator.EASE_BOTH.getInterpolation(normalized);
+            final float finalAngle = (float) Math.toRadians(AndroidUtilities.lerpAngle(startAngle, angleChange, normalized));
+
+            float adjustedLength = pathLength + pathLength * expansionFactor * 1.5f;
+            float posX = (float) (centerX + Math.cos(finalAngle) * patternRadius * adjustedLength);
+            float posY = (float) (baseCenterY + Math.sin(finalAngle) * patternRadius * adjustedLength);
+            posX = AndroidUtilities.lerp(posX, centerX, normalized);
+            posY = AndroidUtilities.lerp(posY, avatarCy, normalized);
+
+            float baseScale = AndroidUtilities.lerp(1f + expansionFactor * 0.75f, 0.4f, normalized) * (pathLength >= 0.5f ? baseSize * 0.9f : baseSize);
+            float alphaMuliplier = 0.6f * (1f - topBottomFade * 0.5f) * (1f - pathLength);
+            pattern.setAlpha((int) (255 * alpha * alphaMuliplier));
+            float half = baseScale / 2f;
+            pattern.setBounds((int) (posX - half), (int) (posY - half), (int) (posX + half), (int) (posY + half));
+            pattern.draw(canvas);
+        }
+    }
 
     public static void drawProfilePattern(Canvas canvas, Drawable pattern, float w, float h, float alpha, float full) {
         if (alpha <= 0.0f) return;

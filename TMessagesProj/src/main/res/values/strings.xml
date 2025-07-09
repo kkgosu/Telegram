@@ -340,6 +340,9 @@
     <string name="OpenChannel2">Open Channel</string>
     <string name="OpenGroup2">Open Group</string>
     <string name="SendMessage">Send Message</string>
+    <string name="CallingRestricted">**%s** restricts calling them. You can send them an invite link instead.</string>
+    <string name="Discuss">Discuss</string>
+    <string name="ChangeAvatar">Change avatar</string>
     <string name="Mention">Mention</string>
     <string name="AvatarPreviewSearchMessages">Search Messages</string>
     <string name="NotificationsMutedHint">Notifications muted</string>
