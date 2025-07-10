@@ -25,6 +25,7 @@ public class BuildVars {
     public static boolean CHECK_UPDATES = true;
     public static boolean NO_SCOPED_STORAGE = Build.VERSION.SDK_INT <= 29;
     public static String BUILD_VERSION_STRING = BuildConfig.BUILD_VERSION_STRING;
+
     public static int APP_ID = 16364107;
     public static String APP_HASH = "13364bbcfc2fddde1e1cba6fd0518f1e";
 
@@ -56,7 +57,7 @@ public class BuildVars {
     }
 
     public static boolean useInvoiceBilling() {
-        return BillingController.billingClientEmpty || DEBUG_VERSION || ApplicationLoader.isStandaloneBuild() || isBetaApp() || isHuaweiStoreApp() || hasDirectCurrency();
+        return BillingController.billingClientEmpty || DEBUG_VERSION && false || ApplicationLoader.isStandaloneBuild() || isBetaApp() && false || isHuaweiStoreApp() || hasDirectCurrency();
     }
 
     private static boolean hasDirectCurrency() {
